@@ -136,7 +136,7 @@ integer, dimension(2) :: sibdim
 integer, dimension(4) :: dimnum,dimid,dimcount
 integer, dimension(6) :: adate
 integer, dimension(0:4) :: ncidarr
-integer sibsize,tunit,i,j,k,ierr,ilout
+integer sibsize,tunit,i,j,k,ierr
 integer varid
 real, dimension(:,:,:), allocatable :: rlld
 real, dimension(:,:), allocatable :: gridout,lsdata,ocndata,topdata,depth
@@ -171,12 +171,7 @@ allocate(gridout(sibdim(1),sibdim(2)),rlld(sibdim(1),sibdim(2),2))
 allocate(ocndata(sibdim(1),sibdim(2)),topdata(sibdim(1),sibdim(2)))
 allocate(lsdata(sibdim(1),sibdim(2)),depth(sibdim(1),sibdim(2)))
 
-ilout=min(sibdim(1),30) ! To be compatiable with terread
-write(formout,'("(",i4,"f7.0)")',IOSTAT=ierr) ilout
-eead(tunit,formout,IOSTAT=ierr) topdata ! read topography
-write(formout,'("(",i4,"f4.1)")',IOSTAT=ierr) ilout
-eead(tunit,formout,IOSTAT=ierr) lsdata ! Read ls mask
-close(tunit)
+Call gettopols(tunit,fname(1),lsdata,sibdim)
 
 ! Determine lat/lon to CC mapping
 call ccgetgrid(rlld,gridout,sibdim,lonlat,schmidt,ds)
