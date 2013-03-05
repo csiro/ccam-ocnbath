@@ -7,7 +7,7 @@ INC = -I /apps/netcdf/4.1.3/include
 OBJT = ocnbath.o ocnread.o readswitch.o ccinterp.o\
        latltoij_m.o setxyz_m.o xyzinfo_m.o newmpar_m.o \
        indices_m.o parm_m.o precis_m.o ind_m.o jimco_m.o jimcc_m.o \
-       jim_utils.o nfft_m.o ncwrite.o
+       jim_utils.o nfft_m.o ncwrite.o ncread.o misc.o
 
 ocnbath:$(OBJT)
 	$(FF) $(XFLAGS) $(OBJT) $(LIBS) -o ocnbath
