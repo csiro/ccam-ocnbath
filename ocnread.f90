@@ -189,19 +189,18 @@ If (subsec.NE.0) then
         Call kmconvert(nscale,nscale_x,lldim,lldim_x,2)	
         Call ocnread(latlon,nscale_x,lldim_x,coverout)
 
-        Do lci=1,sibdim(1)
-          Do lcj=1,sibdim(2)
+        Do lcj=1,sibdim(2)
+          Do lci=1,sibdim(1)
             If (countn(lci,lcj).EQ.0) then
               aglon=rlld(lci,lcj,1)
               aglat=rlld(lci,lcj,2)
               serlon=indexlon(aglon,latlon(1),nscale)
               serlat=indexlat(aglat,latlon(2),nscale)
               i=nint(serlon)
-              j=nint(serlat)
-              If ((i.GE.1).AND.(i.LE.lldim(1)).AND.(j.GE.1).AND.(j.LE.lldim(2))) Then
-                dataout(lci,lcj)=coverout(i,j)
-                countn(lci,lcj)=1
-              End if
+              if (i>lldim(1)) i=i-lldim(1)
+              j=min(max(nint(serlat),1),lldim(2))
+              dataout(lci,lcj)=coverout(i,j)
+              countn(lci,lcj)=1
             End If
           End Do
         End Do
