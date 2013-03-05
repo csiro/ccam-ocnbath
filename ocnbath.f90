@@ -102,34 +102,34 @@ End
 ! This subroutine determins the default values for the switches
 !
 
-Subroutine defaults(options,nopts)
+subroutine defaults(options,nopts)
 
-Implicit None
+implicit None
 
-Integer nopts
-Character(len=*), dimension(nopts,2), intent(inout) :: options
-Integer siz
-Integer locate
+integer nopts
+character(len=*), dimension(nopts,2), intent(inout) :: options
+integer siz
+integer locate
 
 siz=locate('-s',options(:,1),nopts)
 
-If (options(siz,2).EQ.'') then
+if (options(siz,2)=='') then
   options(siz,2)='500'
-End if
+end if
 
-Return
-End
+return
+end
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! This subroutine processes the sib data
 !
 
-Subroutine createocn(options,nopts,fname,fastocn,binlimit)
+subroutine createocn(options,nopts,fname,fastocn,binlimit)
 
-Use ccinterp
+use ccinterp
 
-Implicit None
+implicit None
 
 integer, intent(in) :: nopts,binlimit
 integer, dimension(2) :: sibdim
@@ -147,43 +147,42 @@ real, dimension(1) :: atime
 real schmidt,dsx,ds
 character(len=*), dimension(1:nopts,1:2), intent(in) :: options
 character(len=*), dimension(1:2), intent(in) :: fname
-Character*80, dimension(1:3) :: outputdesc
+character*80, dimension(1:3) :: outputdesc
 character*80 returnoption,csize
 character*45 header
 character*10 formout
 logical, intent(in) :: fastocn
 
 csize=returnoption('-s',options,nopts)
-Read(csize,FMT=*,IOSTAT=ierr) sibsize
-If (ierr.NE.0) then
-  Write(6,*) 'ERROR: Invalid array size.  Must be an integer.'
-  Stop
-End if
+read(csize,FMT=*,IOSTAT=ierr) sibsize
+if (ierr/=0) then
+  write(6,*) 'ERROR: Invalid array size.  Must be an integer.'
+  stop
+end if
 
 ! Read topography file
 tunit=1
-Open(tunit,FILE=fname(1),FORM='formatted',STATUS='old',IOSTAT=ierr)
-Read(tunit,*,IOSTAT=ierr) sibdim(1),sibdim(2),lonlat(1),lonlat(2),schmidt,dsx,header
+call readtopography(tunit,fname(1),sibdim,lonlat,schmidt,dsx,header)
 
-Write(6,*) "Dimension : ",sibdim
-Write(6,*) "lon0,lat0 : ",lonlat
-Write(6,*) "Schmidt   : ",schmidt
-Allocate(gridout(sibdim(1),sibdim(2)),rlld(sibdim(1),sibdim(2),2))
-Allocate(ocndata(sibdim(1),sibdim(2)),topdata(sibdim(1),sibdim(2)))
-Allocate(lsdata(sibdim(1),sibdim(2)),depth(sibdim(1),sibdim(2)))
+write(6,*) "Dimension : ",sibdim
+write(6,*) "lon0,lat0 : ",lonlat
+write(6,*) "Schmidt   : ",schmidt
+allocate(gridout(sibdim(1),sibdim(2)),rlld(sibdim(1),sibdim(2),2))
+allocate(ocndata(sibdim(1),sibdim(2)),topdata(sibdim(1),sibdim(2)))
+allocate(lsdata(sibdim(1),sibdim(2)),depth(sibdim(1),sibdim(2)))
 
-ilout=Min(sibdim(1),30) ! To be compatiable with terread
-Write(formout,'("(",i4,"f7.0)")',IOSTAT=ierr) ilout
-Read(tunit,formout,IOSTAT=ierr) topdata ! read topography
-Write(formout,'("(",i4,"f4.1)")',IOSTAT=ierr) ilout
-Read(tunit,formout,IOSTAT=ierr) lsdata ! Read ls mask
-Close(tunit)
+ilout=min(sibdim(1),30) ! To be compatiable with terread
+write(formout,'("(",i4,"f7.0)")',IOSTAT=ierr) ilout
+eead(tunit,formout,IOSTAT=ierr) topdata ! read topography
+write(formout,'("(",i4,"f4.1)")',IOSTAT=ierr) ilout
+eead(tunit,formout,IOSTAT=ierr) lsdata ! Read ls mask
+close(tunit)
 
 ! Determine lat/lon to CC mapping
-Call ccgetgrid(rlld,gridout,sibdim,lonlat,schmidt,ds)
+call ccgetgrid(rlld,gridout,sibdim,lonlat,schmidt,ds)
 
 ! Read ETOPO data
-Call getdata(ocndata,lonlat,gridout,rlld,sibdim,sibsize,fastocn,binlimit)
+call getdata(ocndata,lonlat,gridout,rlld,sibdim,sibsize,fastocn,binlimit)
 
 ! Calculate depth
 where (lsdata<0.5)
@@ -202,7 +201,7 @@ adate(2)=1              ! time units=months
 call ncinitcc(ncidarr,fname(2),dimnum(1:3),dimid,adate)
 outputdesc=(/ 'depth', 'Bathymetry', 'm' /)
 call ncaddvargen(ncidarr,outputdesc,5,2,varid,1.,0.)
-call ncatt(ncidarr,'long0',lonlat(1))
+call ncatt(ncidarr,'lon0',lonlat(1))
 call ncatt(ncidarr,'lat0',lonlat(2))
 call ncatt(ncidarr,'schmidt',schmidt)
 call ncenddef(ncidarr)

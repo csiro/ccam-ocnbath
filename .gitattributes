@@ -7,6 +7,8 @@
 /jimco_m.f90 -text
 /latltoij_m.f90 -text
 /makefile -text
+/misc.f90 -text
+/ncread.f90 -text
 /ncwrite.f90 -text
 /newmpar_m.f90 -text
 /nfft_m.f90 -text
