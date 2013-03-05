@@ -12,7 +12,7 @@ Logical fastocn
 
 Namelist/ocnnml/ topofile,bathout,fastocn,binlimit
 
-Write(6,*) 'OCNBATH - ETOPO 2km to CC grid (JUN-09)'
+Write(6,*) 'OCNBATH - ETOPO 2km to CC grid (FEB-13)'
 
 ! Read switches
 nopts=1
@@ -131,19 +131,27 @@ Use ccinterp
 
 Implicit None
 
-Logical, intent(in) :: fastocn
-Integer, intent(in) :: nopts,binlimit
-Character(len=*), dimension(1:nopts,1:2), intent(in) :: options
-Character(len=*), dimension(1:2), intent(in) :: fname
-Character*80 returnoption,csize
-Character*45 header
-Character*9 formout
+integer, intent(in) :: nopts,binlimit
+integer, dimension(2) :: sibdim
+integer, dimension(4) :: dimnum,dimid,dimcount
+integer, dimension(6) :: adate
+integer, dimension(0:4) :: ncidarr
+integer sibsize,tunit,i,j,k,ierr,ilout
+integer varid
 real, dimension(:,:,:), allocatable :: rlld
-Real, dimension(:,:), allocatable :: gridout,lsdata,ocndata,topdata,depth
-Real, dimension(1:2) :: lonlat
-Real schmidt,dsx,ds
-Integer, dimension(1:2) :: sibdim
-Integer sibsize,tunit,i,j,k,ierr,ilout
+real, dimension(:,:), allocatable :: gridout,lsdata,ocndata,topdata,depth
+real, dimension(3,2) :: alonlat
+real, dimension(2) :: lonlat
+real, dimension(1) :: alvl
+real, dimension(1) :: atime
+real schmidt,dsx,ds
+character(len=*), dimension(1:nopts,1:2), intent(in) :: options
+character(len=*), dimension(1:2), intent(in) :: fname
+Character*80, dimension(1:3) :: outputdesc
+character*80 returnoption,csize
+character*45 header
+character*10 formout
+logical, intent(in) :: fastocn
 
 csize=returnoption('-s',options,nopts)
 Read(csize,FMT=*,IOSTAT=ierr) sibsize
@@ -165,9 +173,9 @@ Allocate(ocndata(sibdim(1),sibdim(2)),topdata(sibdim(1),sibdim(2)))
 Allocate(lsdata(sibdim(1),sibdim(2)),depth(sibdim(1),sibdim(2)))
 
 ilout=Min(sibdim(1),30) ! To be compatiable with terread
-Write(formout,'("(",i3,"f7.0)")',IOSTAT=ierr) ilout
+Write(formout,'("(",i4,"f7.0)")',IOSTAT=ierr) ilout
 Read(tunit,formout,IOSTAT=ierr) topdata ! read topography
-Write(formout,'("(",i3,"f4.1)")',IOSTAT=ierr) ilout
+Write(formout,'("(",i4,"f4.1)")',IOSTAT=ierr) ilout
 Read(tunit,formout,IOSTAT=ierr) lsdata ! Read ls mask
 Close(tunit)
 
@@ -178,20 +186,37 @@ Call ccgetgrid(rlld,gridout,sibdim,lonlat,schmidt,ds)
 Call getdata(ocndata,lonlat,gridout,rlld,sibdim,sibsize,fastocn,binlimit)
 
 ! Calculate depth
-where (lsdata.lt.0.5)
-  depth=max(topdata/9.8-ocndata,10.)
+where (lsdata<0.5)
+  depth=max(topdata/9.8-ocndata,1.)
 elsewhere
   depth=0.
 end where
 
+! Prep netcdf output
 Write(6,*) 'Write depth data'
-Write(formout,'("(",i3,"f6.0)" )') sibdim(1)
-Open(1,File=fname(2))
-Write(1,'(i3,i4,2f8.3,f6.3,f8.0," ",a39)') sibdim(1),sibdim(2),lonlat(1),lonlat(2),schmidt,ds,'depth'
-Write(1,formout) min(depth,9999.)
-Close(1)
+dimnum(1:2)=sibdim(1:2) ! CC grid dimensions
+dimnum(3)=1             ! Turn off level
+dimnum(4)=1             ! Number months
+adate=0                 ! Turn off date
+adate(2)=1              ! time units=months
+call ncinitcc(ncidarr,fname(2),dimnum(1:3),dimid,adate)
+outputdesc=(/ 'depth', 'Bathymetry', 'm' /)
+call ncaddvargen(ncidarr,outputdesc,5,2,varid,1.,0.)
+call ncatt(ncidarr,'long0',lonlat(1))
+call ncatt(ncidarr,'lat0',lonlat(2))
+call ncatt(ncidarr,'schmidt',schmidt)
+call ncenddef(ncidarr)
+alonlat(:,1)=(/ 1., real(sibdim(1)), 1. /)
+alonlat(:,2)=(/ 1., real(sibdim(2)), 1. /)
+alvl=1.
+atime(1)=0.
+call nclonlatgen(ncidarr,dimid,alonlat,alvl,atime,dimnum)
 
-Deallocate(gridout,rlld,ocndata,topdata,lsdata,depth)
+dimcount=(/ sibdim(1), sibdim(2), 1, 1 /)
+call ncwritedatgen(ncidarr,depth,dimcount,varid)
+call ncclose(ncidarr)
+
+deallocate(gridout,rlld,ocndata,topdata,lsdata,depth)
 
 Return
 End
