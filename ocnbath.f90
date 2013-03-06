@@ -172,6 +172,7 @@ allocate(ocndata(sibdim(1),sibdim(2)),topdata(sibdim(1),sibdim(2)))
 allocate(lsdata(sibdim(1),sibdim(2)),depth(sibdim(1),sibdim(2)))
 
 Call gettopols(tunit,fname(1),lsdata,sibdim)
+lsdata=1.-lsdata
 
 ! Determine lat/lon to CC mapping
 call ccgetgrid(rlld,gridout,sibdim,lonlat,schmidt,ds)
