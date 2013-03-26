@@ -171,7 +171,7 @@ allocate(gridout(sibdim(1),sibdim(2)),rlld(sibdim(1),sibdim(2),2))
 allocate(ocndata(sibdim(1),sibdim(2)),topdata(sibdim(1),sibdim(2)))
 allocate(lsdata(sibdim(1),sibdim(2)),depth(sibdim(1),sibdim(2)))
 
-Call gettopols(tunit,fname(1),lsdata,sibdim)
+Call gettopohgt(tunit,fname(1),topdata,lsdata,sibdim)
 lsdata=1.-lsdata
 
 ! Determine lat/lon to CC mapping

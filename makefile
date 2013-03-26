@@ -1,7 +1,7 @@
 FF = ifort
 XFLAGS = -O
-LIBS = -L /apps/netcdf/4.1.3/lib -lnetcdf -lnetcdff
-INC = -I /apps/netcdf/4.1.3/include
+LIBS = -L $(NETCDF_ROOT)/lib -L $(HDF5_HOME)/lib -lnetcdf -lnetcdff -lhdf5 -lhdf5_hl
+INC = -I $(NETCDF_ROOT)/include
 
 
 OBJT = ocnbath.o ocnread.o readswitch.o ccinterp.o\
