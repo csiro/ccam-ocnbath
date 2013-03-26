@@ -22,6 +22,9 @@ clean:
 .f.o:
 	$(FF) -c $(XFLAGS) $(INC) $<
 
+# Remove mod rule from Modula 2 so GNU make doesn't get confused
+%.o : %.mod
+
 ocnbath.o : ccinterp.o
 ocnread.o : ccinterp.o
 ccinterp.o : ccinterp.f90 setxyz_m.o xyzinfo_m.o latltoij_m.o newmpar_m.o
