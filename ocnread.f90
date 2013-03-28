@@ -191,16 +191,17 @@ If (subsec.NE.0) then
 
         Do lcj=1,sibdim(2)
           Do lci=1,sibdim(1)
-            If (countn(lci,lcj).EQ.0) then
+            If (countn(lci,lcj)==0) then
               aglon=rlld(lci,lcj,1)
               aglat=rlld(lci,lcj,2)
               serlon=indexlon(aglon,latlon(1),nscale)
               serlat=indexlat(aglat,latlon(2),nscale)
               i=nint(serlon)
-              if (i>lldim(1)) i=i-lldim(1)
-              j=min(max(nint(serlat),1),lldim(2))
-              dataout(lci,lcj)=coverout(i,j)
-              countn(lci,lcj)=1
+	      j=nint(serlat)
+	      if (i>0.and.i<=lldim(1).and.j>0.and.j<=lldim(2)) then
+                dataout(lci,lcj)=coverout(i,j)
+                countn(lci,lcj)=1
+              end if
             End If
           End Do
         End Do
@@ -217,6 +218,11 @@ Else
 End If
 
 Deallocate(sermask)
+
+if (any(countn==0)) then
+  write(6,*) "ERROR: Unassigned points"
+  stop
+end if
 
 dataout=dataout/Real(countn)
 
