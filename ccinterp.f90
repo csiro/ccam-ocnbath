@@ -21,9 +21,10 @@ Contains
 !
 Subroutine ccgetgrid(rlld,gridout,ecodim,lonlat,schmidtin,dst)
 
+use indices_m
 Use newmpar_m
 Use setxyz_m
-Use xyzinfo_m, only : ds,rlong,rlat,em
+Use xyzinfo_m, only : ds,rlong,rlat,em,f,fu,fv,dmdx,dmdy,dmdxv,dmdyu,wts,x,y,z
 
 Implicit None
 
@@ -53,27 +54,40 @@ iquad=1+il*((8*npanels)/(npanels+4))
 Write(6,*) 'Start setxyz'
 Call setxyz(il,jl,kl,npanels,ifull,iquad,diag,id,jd,rlong0,rlat0,schmidt,schm13,ntang,erad)
 Write(6,*) 'End setxyz'
-      
+
+deallocate(i_nn,i_ss,i_ww,i_ee,i_ne)
+deallocate(i_se,i_en,i_wn,i_wu,i_sv,i_wu2,i_sv2,i_eu2)
+deallocate(i_nv2,i_ev2,i_nu2,i_eu,i_nv)
+deallocate(lwws,lws,lwss,les,lees,less,lwwn,lwnn,leen)
+deallocate(lenn,lsww,lsw,lssw,lsee,lsse,lnww,lnw,lnnw)
+deallocate(lnee,lnne)
+deallocate(f,fu,fv,dmdx,dmdy,dmdxv,dmdyu)
+deallocate(wts)
+
 Do j=1,ecodim(2)
   Do i=1,ecodim(1)
     n=i+(j-1)*ecodim(1)
     gridout(i,j)=(ds/em(n))/1000. ! km
     rlld(i,j,1)=rlong(n)*180./pi
-    If (rlld(i,j,1).GT.180.) rlld(i,j,1)=rlld(i,j,1)-360.
+    If (rlld(i,j,1)>180.) rlld(i,j,1)=rlld(i,j,1)-360.
     rlld(i,j,2)=rlat(n)*180./pi
   End Do
 End Do
 
 dst=ds
 
+deallocate(em,rlat,rlong,x,y,z)
+deallocate(i_n,i_s,i_w,i_e)
+
 Return
 End subroutine ccgetgrid
 
 Subroutine getcc(rlld,gridout,xyz,axyz,bxyz,ecodim,lonlat,schmidtin,dst)
 
+use indices_m
 Use newmpar_m
 Use setxyz_m
-Use xyzinfo_m, only : ds,rlong,rlat,em,x,y,z,ax,ay,az,bx,by,bz
+Use xyzinfo_m, only : ds,rlong,rlat,em,x,y,z,ax,ay,az,bx,by,bz,f,fu,fv,dmdx,dmdy,dmdxv,dmdyu,wts
 
 Implicit None
 
@@ -104,13 +118,22 @@ iquad=1+il*((8*npanels)/(npanels+4))
 Write(6,*) 'Start setxyz'
 Call setxyz(il,jl,kl,npanels,ifull,iquad,diag,id,jd,rlong0,rlat0,schmidt,schm13,ntang,erad)
 Write(6,*) 'End setxyz'
-      
+
+deallocate(i_nn,i_ss,i_ww,i_ee,i_ne)
+deallocate(i_se,i_en,i_wn,i_wu,i_sv,i_wu2,i_sv2,i_eu2)
+deallocate(i_nv2,i_ev2,i_nu2,i_eu,i_nv)
+deallocate(lwws,lws,lwss,les,lees,less,lwwn,lwnn,leen)
+deallocate(lenn,lsww,lsw,lssw,lsee,lsse,lnww,lnw,lnnw)
+deallocate(lnee,lnne)
+deallocate(f,fu,fv,dmdx,dmdy,dmdxv,dmdyu)
+deallocate(wts)
+
 Do j=1,ecodim(2)
   Do i=1,ecodim(1)
     n=i+(j-1)*ecodim(1)
     gridout(i,j)=(ds/em(n))/1000. ! km
     rlld(i,j,1)=rlong(n)*180./pi
-    If (rlld(i,j,1).GT.180.) rlld(i,j,1)=rlld(i,j,1)-360.
+    If (rlld(i,j,1)>180.) rlld(i,j,1)=rlld(i,j,1)-360.
     rlld(i,j,2)=rlat(n)*180./pi
     xyz(i,j,1)=x(n)
     xyz(i,j,2)=y(n)
@@ -126,6 +149,9 @@ End Do
 
 dst=ds
 
+deallocate(em,rlat,rlong,x,y,z)
+deallocate(i_n,i_s,i_w,i_e)
+
 Return
 End subroutine getcc
 
@@ -134,7 +160,7 @@ Subroutine cgg2(rlld,gridout,ecodim,lonlat,schmidtin,dst,in,ie,is,iw)
 Use newmpar_m
 Use setxyz_m
 use indices_m
-Use xyzinfo_m, only : ds,rlong,rlat,em
+Use xyzinfo_m, only : ds,rlong,rlat,em,f,fu,fv,dmdx,dmdy,dmdxv,dmdyu,wts,x,y,z
 
 Implicit None
 
@@ -165,13 +191,22 @@ iquad=1+il*((8*npanels)/(npanels+4))
 Write(6,*) 'Start setxyz'
 Call setxyz(il,jl,kl,npanels,ifull,iquad,diag,id,jd,rlong0,rlat0,schmidt,schm13,ntang,erad)
 Write(6,*) 'End setxyz'
+
+deallocate(i_nn,i_ss,i_ww,i_ee,i_ne)
+deallocate(i_se,i_en,i_wn,i_wu,i_sv,i_wu2,i_sv2,i_eu2)
+deallocate(i_nv2,i_ev2,i_nu2,i_eu,i_nv)
+deallocate(lwws,lws,lwss,les,lees,less,lwwn,lwnn,leen)
+deallocate(lenn,lsww,lsw,lssw,lsee,lsse,lnww,lnw,lnnw)
+deallocate(lnee,lnne)
+deallocate(f,fu,fv,dmdx,dmdy,dmdxv,dmdyu)
+deallocate(wts)
       
 Do j=1,ecodim(2)
   Do i=1,ecodim(1)
     n=i+(j-1)*ecodim(1)
     gridout(i,j)=(ds/em(n))/1000. ! km
     rlld(i,j,1)=rlong(n)*180./pi
-    If (rlld(i,j,1).GT.180.) rlld(i,j,1)=rlld(i,j,1)-360.
+    If (rlld(i,j,1)>180.) rlld(i,j,1)=rlld(i,j,1)-360.
     rlld(i,j,2)=rlat(n)*180./pi
     in(i,j)=i_n(n)
     ie(i,j)=i_e(n)
@@ -181,6 +216,9 @@ Do j=1,ecodim(2)
 End Do
 
 dst=ds
+
+deallocate(em,rlat,rlong,x,y,z)
+deallocate(i_n,i_s,i_w,i_e)
 
 Return
 End subroutine cgg2
