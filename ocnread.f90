@@ -197,8 +197,8 @@ If (subsec.NE.0) then
               serlon=indexlon(aglon,latlon(1),nscale)
               serlat=indexlat(aglat,latlon(2),nscale)
               i=nint(serlon)
-	      j=nint(serlat)
-	      if (i>0.and.i<=lldim(1).and.j>0.and.j<=lldim(2)) then
+              j=nint(serlat)
+              if (i>0.and.i<=lldim(1).and.j>0.and.j<=lldim(2)) then
                 dataout(lci,lcj)=coverout(i,j)
                 countn(lci,lcj)=1
               end if
@@ -218,11 +218,6 @@ Else
 End If
 
 Deallocate(sermask)
-
-if (any(countn==0)) then
-  write(6,*) "ERROR: Unassigned points"
-  stop
-end if
 
 dataout=dataout/Real(countn)
 
@@ -560,7 +555,7 @@ Integer, dimension(1:2,1:2,1:2) :: posll
 Integer i,j
 Integer rndup
 Logical, dimension(1:sibdim(1),1:sibdim(2)) :: sermask
-Integer, dimension(1:sibdim(1),1:sibdim(2)), intent(in) :: maskn
+Logical, dimension(1:sibdim(1),1:sibdim(2)), intent(in) :: maskn
 
 tlld=rlld
 

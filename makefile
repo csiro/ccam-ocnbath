@@ -1,6 +1,6 @@
 FF = ifort
-XFLAGS = -O -assume byterecl
-LIBS = -L $(NETCDF_ROOT)/lib -L $(HDF5_HOME)/lib -lnetcdf -lnetcdff -lhdf5 -lhdf5_hl
+XFLAGS = -O -assume byterecl -fpp -Dusenc3
+LIBS = -L $(NETCDF_ROOT)/lib -lnetcdf -lnetcdff
 INC = -I $(NETCDF_ROOT)/include
 
 

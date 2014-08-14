@@ -195,7 +195,9 @@ dimnum(4)=1             ! Number months
 adate=0                 ! Turn off date
 adate(2)=1              ! time units=months
 call ncinitcc(ncidarr,fname(2),dimnum(1:3),dimid,adate)
-outputdesc=(/ 'depth', 'Bathymetry', 'm' /)
+outputdesc(1)='depth'
+outputdesc(2)='Bathymetry'
+outputdesc(3)='m'
 call ncaddvargen(ncidarr,outputdesc,5,2,varid,1.,0.)
 call ncatt(ncidarr,'lon0',lonlat(1))
 call ncatt(ncidarr,'lat0',lonlat(2))
