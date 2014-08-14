@@ -251,8 +251,8 @@ Integer, dimension(2,2) :: jin,jout
 Integer ilat,ilon,jlat,recpos,i,j
 Integer, dimension(2) :: llint
 
-! Must be compiled using 4 byte record lengths
-Open(10,FILE='etopo1_ice_c.flt',ACCESS='DIRECT',FORM='UNFORMATTED',RECL=21600,CONVERT='LITTLE_ENDIAN')
+! Must be compiled using 1 byte record lengths
+Open(10,FILE='etopo1_ice_c.flt',ACCESS='DIRECT',FORM='UNFORMATTED',RECL=86400,CONVERT='LITTLE_ENDIAN')
 
 Call solvejshift(latlon(1),jin,jout,60)
 
@@ -308,8 +308,8 @@ countn=0
 
 Write(6,*) "Read ETOPO data (stream)"
 
-! Must be compiled using 4 byte record lengths
-Open(10,FILE='etopo1_ice_c.flt',ACCESS='DIRECT',FORM='UNFORMATTED',RECL=21600,CONVERT='LITTLE_ENDIAN')
+! Must be compiled using 1 byte record lengths
+Open(10,FILE='etopo1_ice_c.flt',ACCESS='DIRECT',FORM='UNFORMATTED',RECL=86400,CONVERT='LITTLE_ENDIAN')
 
 
 Do ilat=1,10800
