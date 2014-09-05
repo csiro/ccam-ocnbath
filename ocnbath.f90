@@ -8,11 +8,15 @@ Character*80, dimension(:,:), allocatable :: options
 Character*80, dimension(2) :: fname
 Character*80 topofile,bathout
 Integer binlimit, nopts
-Logical fastocn
+Logical fastocn, bathfilt
 
-Namelist/ocnnml/ topofile,bathout,fastocn,binlimit
+binlimit=4
+fastocn=.true.
+bathfilt=.false.
 
-Write(6,*) 'OCNBATH - ETOPO 2km to CC grid (FEB-13)'
+Namelist/ocnnml/ topofile,bathout,fastocn,binlimit,bathfilt
+
+Write(6,*) 'OCNBATH - ETOPO 2km to CC grid (SEP-14)'
 
 ! Read switches
 nopts=1
@@ -32,7 +36,7 @@ Write(6,*) 'Namelist accepted'
 fname(1)=topofile
 fname(2)=bathout
 
-Call createocn(options,nopts,fname,fastocn,binlimit)
+Call createocn(options,nopts,fname,fastocn,bathfilt,binlimit)
 
 Deallocate(options)
 
@@ -64,13 +68,15 @@ Write(6,*) '  &ocnnml'
 Write(6,*) '    topofile="topout"'
 Write(6,*) '    bathout="bath"'
 Write(6,*) '    fastocn=t'
-Write(6,*) '    binlimit=2'
+Write(6,*) '    bathfilt=t'
+Write(6,*) '    binlimit=4'
 Write(6,*) '  &end'
 Write(6,*)
 Write(6,*) '  where:'
 Write(6,*) '    topofile      = topography (input) file'
 Write(6,*) '    bathout       = Depth filename'
 Write(6,*) '    fastocn       = Turn on fastocn mode (see notes below)'
+Write(6,*) '    bathfilt      = Filter bathymetry'
 Write(6,*) '    binlimit      = The minimum ratio between the grid'
 Write(6,*) '                    length scale and the length scale of'
 Write(6,*) '                    the aggregated ETOPO data (see notes'
@@ -82,6 +88,10 @@ Write(6,*) '       processing.  The degree of aggregation is determined'
 Write(6,*) '       by the avaliable memory (i.e., -s switch).   Usually,'
 Write(6,*) '       fastocn is used to test the output and then the'
 Write(6,*) '       dataset is subsequently regenerated with fastocn=f.'
+Write(6,*)
+Write(6,*) '       bathfilt will smooth the bathymetry for better'
+Write(6,*) '       agreement with the assumtions of the semi-Lagrangian'
+Write(6,*) '       advection'
 Write(6,*)
 Write(6,*) '       During the binning of ETOPO data, the length scale'
 Write(6,*) '       eventually becomes sufficently small so that binlimit'
@@ -125,7 +135,7 @@ end
 ! This subroutine processes the sib data
 !
 
-subroutine createocn(options,nopts,fname,fastocn,binlimit)
+subroutine createocn(options,nopts,fname,fastocn,bathfilt,binlimit)
 
 use ccinterp
 
@@ -136,10 +146,12 @@ integer, dimension(2) :: sibdim
 integer, dimension(4) :: dimnum,dimid,dimcount
 integer, dimension(6) :: adate
 integer, dimension(0:4) :: ncidarr
+integer, dimension(:,:), allocatable :: in,ie,is,iw
 integer sibsize,tunit,i,j,k,ierr
 integer varid
+integer inx,iny,isx,isy,iex,iey,iwx,iwy
 real, dimension(:,:,:), allocatable :: rlld
-real, dimension(:,:), allocatable :: gridout,lsdata,ocndata,topdata,depth
+real, dimension(:,:), allocatable :: gridout,lsdata,ocndata,topdata,depth,dum
 real, dimension(3,2) :: alonlat
 real, dimension(2) :: lonlat
 real, dimension(1) :: alvl
@@ -151,7 +163,7 @@ character*80, dimension(1:3) :: outputdesc
 character*80 returnoption,csize
 character*45 header
 character*10 formout
-logical, intent(in) :: fastocn
+logical, intent(in) :: fastocn, bathfilt
 
 csize=returnoption('-s',options,nopts)
 read(csize,FMT=*,IOSTAT=ierr) sibsize
@@ -170,12 +182,14 @@ write(6,*) "Schmidt   : ",schmidt
 allocate(gridout(sibdim(1),sibdim(2)),rlld(sibdim(1),sibdim(2),2))
 allocate(ocndata(sibdim(1),sibdim(2)),topdata(sibdim(1),sibdim(2)))
 allocate(lsdata(sibdim(1),sibdim(2)),depth(sibdim(1),sibdim(2)))
+allocate(in(sibdim(1),sibdim(2)),ie(sibdim(1),sibdim(2)))
+allocate(is(sibdim(1),sibdim(2)),iw(sibdim(1),sibdim(2)))
 
 Call gettopohgt(tunit,fname(1),topdata,lsdata,sibdim)
 lsdata=1.-lsdata
 
 ! Determine lat/lon to CC mapping
-call ccgetgrid(rlld,gridout,sibdim,lonlat,schmidt,ds)
+call cgg2(rlld,gridout,sibdim,lonlat,schmidt,ds,in,ie,is,iw)
 
 ! Read ETOPO data
 call getdata(ocndata,lonlat,gridout,rlld,sibdim,sibsize,fastocn,binlimit)
@@ -186,6 +200,26 @@ where (lsdata<0.5)
 elsewhere
   depth=0.
 end where
+
+! Filter bathymetry
+if (bathfilt) then
+  allocate(dum(sibdim(1),sibdim(2)))
+  dum=depth
+  do j=1,sibdim(2)
+    do i=1,sibdim(1)
+      iny=(in(i,j)-1)/sibdim(2)+1
+      inx=in(i,j)-(iny-1)*sibdim(2)
+      isy=(is(i,j)-1)/sibdim(2)+1
+      isx=is(i,j)-(isy-1)*sibdim(2)
+      iey=(ie(i,j)-1)/sibdim(2)+1
+      iex=ie(i,j)-(iey-1)*sibdim(2)
+      iwy=(iw(i,j)-1)/sibdim(2)+1
+      iwx=iw(i,j)-(iwy-1)*sibdim(2)
+      depth(i,j)=0.125*(dum(inx,iny)+dum(isx,isy)+dum(iex,iey)+dum(iwx,iwy))+0.5*dum(i,j)
+    end do
+  end do
+  deallocate(dum)
+end if
 
 ! Prep netcdf output
 Write(6,*) 'Write depth data'
@@ -214,6 +248,7 @@ call ncwritedatgen(ncidarr,depth,dimcount,varid)
 call ncclose(ncidarr)
 
 deallocate(gridout,rlld,ocndata,topdata,lsdata,depth)
+deallocate(in,is,ie,iw)
 
 Return
 End
