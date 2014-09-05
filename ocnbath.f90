@@ -207,15 +207,17 @@ if (bathfilt) then
   dum=depth
   do j=1,sibdim(2)
     do i=1,sibdim(1)
-      iny=(in(i,j)-1)/sibdim(2)+1
-      inx=in(i,j)-(iny-1)*sibdim(2)
-      isy=(is(i,j)-1)/sibdim(2)+1
-      isx=is(i,j)-(isy-1)*sibdim(2)
-      iey=(ie(i,j)-1)/sibdim(2)+1
-      iex=ie(i,j)-(iey-1)*sibdim(2)
-      iwy=(iw(i,j)-1)/sibdim(2)+1
-      iwx=iw(i,j)-(iwy-1)*sibdim(2)
-      depth(i,j)=0.125*(dum(inx,iny)+dum(isx,isy)+dum(iex,iey)+dum(iwx,iwy))+0.5*dum(i,j)
+      iny=(in(i,j)-1)/sibdim(1)+1
+      inx=in(i,j)-(iny-1)*sibdim(1)
+      isy=(is(i,j)-1)/sibdim(1)+1
+      isx=is(i,j)-(isy-1)*sibdim(1)
+      iey=(ie(i,j)-1)/sibdim(1)+1
+      iex=ie(i,j)-(iey-1)*sibdim(1)
+      iwy=(iw(i,j)-1)/sibdim(1)+1
+      iwx=iw(i,j)-(iwy-1)*sibdim(1)
+      if (dum(i,j)>0.01) then
+        depth(i,j)=0.125*(dum(inx,iny)+dum(isx,isy)+dum(iex,iey)+dum(iwx,iwy))+0.5*dum(i,j)
+      end if	
     end do
   end do
   deallocate(dum)
