@@ -7,7 +7,7 @@ INC = -I $(NETCDF_ROOT)/include
 OBJT = ocnbath.o ocnread.o readswitch.o ccinterp.o\
        latltoij_m.o setxyz_m.o xyzinfo_m.o newmpar_m.o \
        indices_m.o parm_m.o precis_m.o ind_m.o jimco_m.o jimcc_m.o \
-       jim_utils.o nfft_m.o ncwrite.o ncread.o misc.o
+       jim_utils.o nfft_m.o ncwrite.o ncread.o misc.o stacklimit.o
 
 ocnbath:$(OBJT)
 	$(FF) $(XFLAGS) $(OBJT) $(LIBS) -o ocnbath
@@ -17,6 +17,10 @@ clean:
 # This section gives the rules for building object modules.
 
 .SUFFIXES:.f90
+
+stacklimit.o: stacklimit.c
+	cc -c stacklimit.c
+
 .f90.o:
 	$(FF) -c $(XFLAGS) $(INC) $<
 .f.o:

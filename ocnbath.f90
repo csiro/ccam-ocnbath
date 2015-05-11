@@ -16,6 +16,11 @@ bathfilt=.false.
 
 Namelist/ocnnml/ topofile,bathout,fastocn,binlimit,bathfilt
 
+#ifndef stacklimit
+! For linux only - removes stacklimit on all processors
+call setstacklimit(-1)
+#endif   
+
 Write(6,*) 'OCNBATH - ETOPO 2km to CC grid (SEP-14)'
 
 ! Read switches
