@@ -7,7 +7,8 @@ INC = -I $(NETCDF_ROOT)/include
 OBJT = ocnbath.o ocnread.o readswitch.o ccinterp.o\
        latltoij_m.o setxyz_m.o xyzinfo_m.o newmpar_m.o \
        indices_m.o parm_m.o precis_m.o ind_m.o jimco_m.o jimcc_m.o \
-       jim_utils.o nfft_m.o ncwrite.o ncread.o misc.o stacklimit.o
+       jim_utils.o nfft_m.o ncwrite.o ncread.o misc.o netcdf_m.o \
+       stacklimit.o
 
 ocnbath:$(OBJT)
 	$(FF) $(XFLAGS) $(OBJT) $(LIBS) -o ocnbath
@@ -44,3 +45,5 @@ jimcc_m.o : jimcc_m.f90 parm_m.o precis_m.o
 jimco_m.o : jimco_m.f90 precis_m.o jim_utils.o nfft_m.o 
 jim_utils.o : jim_utils.f90 precis_m.o 
 nfft_m.o : nfft_m.f90 precis_m.o 
+ncread.o : netcdf_m.o
+ncwrite.o : netcdf_m.o
