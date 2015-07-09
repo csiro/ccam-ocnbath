@@ -1,3 +1,24 @@
+! Conformal Cubic Atmospheric Model
+    
+! Copyright 2015 Commonwealth Scientific Industrial Research Organisation (CSIRO)
+    
+! This file is part of the Conformal Cubic Atmospheric Model (CCAM)
+!
+! CCAM is free software: you can redistribute it and/or modify
+! it under the terms of the GNU General Public License as published by
+! the Free Software Foundation, either version 3 of the License, or
+! (at your option) any later version.
+!
+! CCAM is distributed in the hope that it will be useful,
+! but WITHOUT ANY WARRANTY; without even the implied warranty of
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+! GNU General Public License for more details.
+!
+! You should have received a copy of the GNU General Public License
+! along with CCAM.  If not, see <http://www.gnu.org/licenses/>.
+
+!------------------------------------------------------------------------------
+    
 !
 ! THIS FILE CONTAINS MISC SUBROUTINES
 !
@@ -590,7 +611,7 @@ subroutine fill_cc(a_io,ik,land_in)
 implicit none
       
 integer :: nrem, i, ii, ik, iq, ind, j, n, neighb, ndiag
-integer :: iminb,imaxb,jminb,jmaxb
+integer :: iminb,imaxb,jminb,jmaxb,nrem_l
 integer, save :: oldik = 0
 integer, dimension(:,:), allocatable, save :: ic
 integer, dimension(0:5) :: imin,imax,jmin,jmax
@@ -674,6 +695,7 @@ do while ( nrem > 0)
     imaxb=1
     jminb=ik
     jmaxb=1
+    nrem_l=0
     do j=jmin(n),jmax(n)
       do i=imin(n),imax(n)
         iq=ind(i,j,n)
@@ -690,14 +712,20 @@ do while ( nrem > 0)
             jminb=min(j,jminb)
             jmaxb=max(j,jmaxb)
             nrem=nrem+1   ! current number of points without a neighbour
+            nrem_l=nrem_l+1
           endif
         endif
       end do
     end do
-    imin(n)=iminb
-    imax(n)=imaxb
-    jmin(n)=jminb
-    jmax(n)=jmaxb
+    if (nrem_l>0) then
+      imin(n)=iminb
+      imax(n)=imaxb
+      jmin(n)=jminb
+      jmax(n)=jmaxb
+    else
+      imax(n)=imin(n)-1
+      jmax(n)=jmin(n)-1
+    end if
   end do
 end do
 return

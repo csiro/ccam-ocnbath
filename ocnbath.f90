@@ -1,3 +1,24 @@
+! Conformal Cubic Atmospheric Model
+    
+! Copyright 2015 Commonwealth Scientific Industrial Research Organisation (CSIRO)
+    
+! This file is part of the Conformal Cubic Atmospheric Model (CCAM)
+!
+! CCAM is free software: you can redistribute it and/or modify
+! it under the terms of the GNU General Public License as published by
+! the Free Software Foundation, either version 3 of the License, or
+! (at your option) any later version.
+!
+! CCAM is distributed in the hope that it will be useful,
+! but WITHOUT ANY WARRANTY; without even the implied warranty of
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+! GNU General Public License for more details.
+!
+! You should have received a copy of the GNU General Public License
+! along with CCAM.  If not, see <http://www.gnu.org/licenses/>.
+
+!------------------------------------------------------------------------------
+    
 Program ocnbath
 
 ! This code creates CCAM ocean depth data using the ETOPO2 dataset
@@ -19,7 +40,7 @@ Namelist/ocnnml/ topofile,bathout,fastocn,binlimit,bathfilt
 #ifndef stacklimit
 ! For linux only - removes stacklimit on all processors
 call setstacklimit(-1)
-#endif   
+#endif 
 
 Write(6,*) 'OCNBATH - ETOPO 2km to CC grid (SEP-14)'
 
@@ -155,6 +176,8 @@ integer, dimension(:,:), allocatable :: in,ie,is,iw
 integer sibsize,tunit,i,j,k,ierr
 integer varid
 integer inx,iny,isx,isy,iex,iey,iwx,iwy
+integer nfilt
+integer, parameter :: nfiltmax = 1
 real, dimension(:,:,:), allocatable :: rlld
 real, dimension(:,:), allocatable :: gridout,lsdata,ocndata,topdata,depth,dum
 real, dimension(3,2) :: alonlat
@@ -209,20 +232,22 @@ end where
 ! Filter bathymetry
 if (bathfilt) then
   allocate(dum(sibdim(1),sibdim(2)))
-  dum=depth
-  do j=1,sibdim(2)
-    do i=1,sibdim(1)
-      iny=(in(i,j)-1)/sibdim(1)+1
-      inx=in(i,j)-(iny-1)*sibdim(1)
-      isy=(is(i,j)-1)/sibdim(1)+1
-      isx=is(i,j)-(isy-1)*sibdim(1)
-      iey=(ie(i,j)-1)/sibdim(1)+1
-      iex=ie(i,j)-(iey-1)*sibdim(1)
-      iwy=(iw(i,j)-1)/sibdim(1)+1
-      iwx=iw(i,j)-(iwy-1)*sibdim(1)
-      if (dum(i,j)>0.01) then
-        depth(i,j)=0.125*(dum(inx,iny)+dum(isx,isy)+dum(iex,iey)+dum(iwx,iwy))+0.5*dum(i,j)
-      end if	
+  do nfilt=1,nfiltmax
+    dum=depth
+    do j=1,sibdim(2)
+      do i=1,sibdim(1)
+        iny=(in(i,j)-1)/sibdim(1)+1
+        inx=in(i,j)-(iny-1)*sibdim(1)
+        isy=(is(i,j)-1)/sibdim(1)+1
+        isx=is(i,j)-(isy-1)*sibdim(1)
+        iey=(ie(i,j)-1)/sibdim(1)+1
+        iex=ie(i,j)-(iey-1)*sibdim(1)
+        iwy=(iw(i,j)-1)/sibdim(1)+1
+        iwx=iw(i,j)-(iwy-1)*sibdim(1)
+        if (dum(i,j)>0.01) then
+          depth(i,j)=0.125*(dum(inx,iny)+dum(isx,isy)+dum(iex,iey)+dum(iwx,iwy))+0.5*dum(i,j)
+        end if
+      end do
     end do
   end do
   deallocate(dum)
