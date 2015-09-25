@@ -42,7 +42,7 @@ Namelist/ocnnml/ topofile,bathout,fastocn,binlimit,bathfilt
 call setstacklimit(-1)
 #endif 
 
-Write(6,*) 'OCNBATH - ETOPO 2km to CC grid (SEP-14)'
+Write(6,*) 'OCNBATH - ETOPO 2km to CC grid (SEP-15)'
 
 ! Read switches
 nopts=1

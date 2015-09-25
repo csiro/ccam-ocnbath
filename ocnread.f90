@@ -35,6 +35,7 @@ Integer, dimension(2) :: lldim,lldim_x,llstore,pxy
 Integer nscale,nscale_x,nface,subsec,mode,tmp
 Integer i,j,k,lci,lcj,nx,ny,netcount
 Integer basesize,scalelimit,minscale
+Integer iadj,jadj
 Real, dimension(sibdim(1),sibdim(2)), intent(out) :: dataout
 Real, dimension(sibdim(1),sibdim(2)), intent(in) :: grid
 Real, dimension(sibdim(1),sibdim(2),2), intent(in) :: tlld
@@ -44,7 +45,7 @@ Real, dimension(2), intent(in) :: glonlat
 Real, dimension(:,:), allocatable :: coverout
 Real, dimension(2) :: latlon
 Real, dimension(2,2) :: sll
-Real, dimension(2,2) :: covertemp
+Real, dimension(2,2) :: rdat
 Real aglon,aglat,alci,alcj,serlon,serlat,slonn,slatx,elon,elat,tscale,baselon
 Real ipol,callon,callat,indexlon,indexlat
 Logical, intent(in) :: fastocn
@@ -163,8 +164,8 @@ Else
 
 End If
 
-! Fill
-Write(6,*) 'Fill'
+! Interpolate
+Write(6,*) 'Interpolate'
 Allocate(sermask(2,2))
 nscale=scalelimit
 
@@ -219,9 +220,25 @@ If (subsec.NE.0) then
               serlat=indexlat(aglat,latlon(2),nscale)
               i=nint(serlon)
               j=nint(serlat)
+              serlon = serlon - real(i)
+              serlat = serlat - real(j)
               if (i>0.and.i<=lldim(1).and.j>0.and.j<=lldim(2)) then
-                dataout(lci,lcj)=coverout(i,j)
-                countn(lci,lcj)=1
+                ! fill
+                !dataout(lci,lcj)=coverout(i,j)
+                !countn(lci,lcj)=1
+                ! interpolate
+                iadj = nint(sign(1.,serlon))
+                jadj = nint(sign(1.,serlat))
+                serlon = abs(serlon)
+                serlat = abs(serlat)
+                iadj = max(min(i+iadj,lldim(1)),1)
+                jadj = max(min(j+jadj,lldim(2)),1)
+                rdat(1,1) = coverout(i,   j   )
+                rdat(2,1) = coverout(iadj,j   )
+                rdat(1,2) = coverout(i,   jadj)
+                rdat(2,2) = coverout(iadj,jadj)
+                dataout(lci,lcj) = ipol(rdat,serlon,serlat)
+                countn(lci,lcj) = 1
               end if
             End If
           End Do
