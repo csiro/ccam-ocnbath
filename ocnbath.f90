@@ -28,15 +28,12 @@ Implicit None
 Character*80, dimension(:,:), allocatable :: options
 Character*80, dimension(2) :: fname
 Character*80 topofile,bathout
-Integer binlimit, nopts
-Logical fastocn, bathfilt
+Integer :: binlimit = 4
+integer nopts
+Logical :: fastocn = .true.
+logical :: bathfilt = .false.
 
 Namelist/ocnnml/ topofile,bathout,fastocn,binlimit,bathfilt
-
-binlimit=4
-fastocn=.true.
-bathfilt=.false.
-
 
 #ifndef stacklimit
 ! For linux only - removes stacklimit on all processors
