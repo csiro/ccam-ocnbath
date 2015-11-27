@@ -31,11 +31,12 @@ Character*80 topofile,bathout
 Integer binlimit, nopts
 Logical fastocn, bathfilt
 
+Namelist/ocnnml/ topofile,bathout,fastocn,binlimit,bathfilt
+
 binlimit=4
 fastocn=.true.
 bathfilt=.false.
 
-Namelist/ocnnml/ topofile,bathout,fastocn,binlimit,bathfilt
 
 #ifndef stacklimit
 ! For linux only - removes stacklimit on all processors

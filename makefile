@@ -1,8 +1,16 @@
 FF = ifort
-XFLAGS = -O -assume byterecl -fpp
+XFLAGS = -O -assume byterecl
 LIBS = -L $(NETCDF_ROOT)/lib -lnetcdf -lnetcdff
 INC = -I $(NETCDF_ROOT)/include
+PPFLAG90 = -fpp
+PPFLAG77 = -fpp
 
+ifeq ($(GFORTRAN),yes)
+FF = gfortran
+XFLAGS = -O2 -mtune=native -march=native -I $(NETCDF_ROOT)/include
+PPFLAG90 = -x f95-cpp-input
+PPFLAG77 = -x f77-cpp-input
+endif
 
 OBJT = ocnbath.o ocnread.o readswitch.o ccinterp.o\
        latltoij_m.o setxyz_m.o xyzinfo_m.o newmpar_m.o \
@@ -14,7 +22,7 @@ ocnbath:$(OBJT)
 	$(FF) $(XFLAGS) $(OBJT) $(LIBS) -o ocnbath
 
 clean:
-	rm *.o core *.mod
+	rm *.o core *.mod ocnbath
 # This section gives the rules for building object modules.
 
 .SUFFIXES:.f90
@@ -23,9 +31,9 @@ stacklimit.o: stacklimit.c
 	cc -c stacklimit.c
 
 .f90.o:
-	$(FF) -c $(XFLAGS) $(INC) $<
+	$(FF) -c $(XFLAGS) $(INC) $(PPFLAG90) $<
 .f.o:
-	$(FF) -c $(XFLAGS) $(INC) $<
+	$(FF) -c $(XFLAGS) $(INC) $(PPFLAG77) $<
 
 # Remove mod rule from Modula 2 so GNU make doesn't get confused
 %.o : %.mod
