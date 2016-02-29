@@ -26,21 +26,21 @@ Program ocnbath
 Implicit None
 
 Character*80, dimension(:,:), allocatable :: options
-Character*80, dimension(2) :: fname
-Character*80 topofile,bathout
-Integer :: binlimit = 4
-integer nopts
+Character*130, dimension(3) :: fname
+Character*130 topofile,bathout,bathdatafile
+integer :: binlimit = 4
+Integer nopts
 Logical :: fastocn = .true.
 logical :: bathfilt = .false.
 
-Namelist/ocnnml/ topofile,bathout,fastocn,binlimit,bathfilt
+Namelist/ocnnml/ topofile,bathout,fastocn,binlimit,bathfilt,bathdatafile
 
 #ifndef stacklimit
 ! For linux only - removes stacklimit on all processors
 call setstacklimit(-1)
 #endif 
 
-Write(6,*) 'OCNBATH - ETOPO 2km to CC grid (SEP-15)'
+Write(6,*) 'OCNBATH - ETOPO 2km to CC grid (FEB-16)'
 
 ! Read switches
 nopts=1
@@ -51,6 +51,8 @@ options(:,2) = ''
 Call readswitch(options,nopts)
 Call defaults(options,nopts)
 
+bathdatafile="etopo1_ice_c.flt"
+
 ! Read namelist
 Write(6,*) 'Input &ocnnml namelist'
 Read(5,NML=ocnnml)
@@ -59,6 +61,7 @@ Write(6,*) 'Namelist accepted'
 ! Generate veg data
 fname(1)=topofile
 fname(2)=bathout
+fname(3)=bathdatafile
 
 Call createocn(options,nopts,fname,fastocn,bathfilt,binlimit)
 
@@ -91,6 +94,7 @@ Write(6,*)
 Write(6,*) '  &ocnnml'
 Write(6,*) '    topofile="topout"'
 Write(6,*) '    bathout="bath"'
+Write(6,*) '    bathdata="etopo1_ice_c.flt"'
 Write(6,*) '    fastocn=t'
 Write(6,*) '    bathfilt=t'
 Write(6,*) '    binlimit=4'
@@ -101,6 +105,7 @@ Write(6,*) '    topofile      = topography (input) file'
 Write(6,*) '    bathout       = Depth filename'
 Write(6,*) '    fastocn       = Turn on fastocn mode (see notes below)'
 Write(6,*) '    bathfilt      = Filter bathymetry'
+Write(6,*) '    bathdata      = Location of input bathymetry data'
 Write(6,*) '    binlimit      = The minimum ratio between the grid'
 Write(6,*) '                    length scale and the length scale of'
 Write(6,*) '                    the aggregated ETOPO data (see notes'
@@ -184,7 +189,7 @@ real, dimension(1) :: alvl
 real, dimension(1) :: atime
 real schmidt,dsx,ds
 character(len=*), dimension(1:nopts,1:2), intent(in) :: options
-character(len=*), dimension(1:2), intent(in) :: fname
+character(len=*), dimension(1:3), intent(in) :: fname
 character*80, dimension(1:3) :: outputdesc
 character*80 returnoption,csize
 character*45 header
@@ -218,7 +223,7 @@ lsdata=1.-lsdata
 call cgg2(rlld,gridout,sibdim,lonlat,schmidt,ds,in,ie,is,iw)
 
 ! Read ETOPO data
-call getdata(ocndata,lonlat,gridout,rlld,sibdim,sibsize,fastocn,binlimit)
+call getdata(ocndata,lonlat,gridout,rlld,sibdim,sibsize,fastocn,binlimit,fname(3))
 
 ! Calculate depth
 where (lsdata<0.5)

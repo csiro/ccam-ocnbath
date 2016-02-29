@@ -22,7 +22,7 @@
 ! This subroutine is to extract (in memory) data from the ETOPO dataset.
 !
 
-Subroutine getdata(dataout,glonlat,grid,tlld,sibdim,sibsize,fastocn,binlimit)
+Subroutine getdata(dataout,glonlat,grid,tlld,sibdim,sibsize,fastocn,binlimit,bathdatafile)
 
 Use ccinterp
 
@@ -50,6 +50,7 @@ Real aglon,aglat,alci,alcj,serlon,serlat,slonn,slatx,elon,elat,tscale,baselon
 Real ipol,callon,callat,indexlon,indexlat
 Logical, intent(in) :: fastocn
 Logical, dimension(:,:), allocatable :: sermask
+character(len=*), intent(in) :: bathdatafile
 
 dataout=0.
 countn=0
@@ -124,7 +125,7 @@ If (fastocn) then
             Allocate(coverout(lldim(1),lldim(2)))
 	  
 	        Call kmconvert(nscale,nscale_x,lldim,lldim_x,2)
-            Call ocnread(latlon,nscale_x,lldim_x,coverout)
+            Call ocnread(latlon,nscale_x,lldim_x,coverout,bathdatafile)
 
             Write(6,*) 'Start bin'
             Do i=1,lldim(1)
@@ -160,7 +161,7 @@ If (fastocn) then
 
 Else
 
-  Call ocnstream(sibdim,dataout,countn)
+  Call ocnstream(sibdim,dataout,countn,bathdatafile)
 
 End If
 
@@ -209,7 +210,7 @@ If (subsec.NE.0) then
         Allocate(coverout(lldim(1),lldim(2)))
 	
         Call kmconvert(nscale,nscale_x,lldim,lldim_x,2)	
-        Call ocnread(latlon,nscale_x,lldim_x,coverout)
+        Call ocnread(latlon,nscale_x,lldim_x,coverout,bathdatafile)
 
         Do lcj=1,sibdim(2)
           Do lci=1,sibdim(1)
@@ -220,13 +221,13 @@ If (subsec.NE.0) then
               serlat=indexlat(aglat,latlon(2),nscale)
               i=nint(serlon)
               j=nint(serlat)
-              serlon = serlon - real(i)
-              serlat = serlat - real(j)
               if (i>0.and.i<=lldim(1).and.j>0.and.j<=lldim(2)) then
                 ! fill
                 !dataout(lci,lcj)=coverout(i,j)
                 !countn(lci,lcj)=1
                 ! interpolate
+                serlon = serlon - real(i)
+                serlat = serlat - real(j)                  
                 iadj = nint(sign(1.,serlon))
                 jadj = nint(sign(1.,serlat))
                 serlon = abs(serlon)
@@ -269,7 +270,7 @@ End
 ! This subroutine reads sib data down to nscale=1km resolution
 !
 
-Subroutine ocnread(latlon,nscale,lldim,coverout)
+Subroutine ocnread(latlon,nscale,lldim,coverout,bathdatafile)
 
 Implicit None
 
@@ -283,9 +284,10 @@ real, dimension(21600) :: datatemp
 Integer, dimension(2,2) :: jin,jout
 Integer ilat,ilon,jlat,recpos,i,j
 Integer, dimension(2) :: llint
+character(len=*), intent(in) :: bathdatafile
 
 ! Must be compiled using 1 byte record lengths
-Open(10,FILE='etopo1_ice_c.flt',ACCESS='DIRECT',FORM='UNFORMATTED',RECL=86400,CONVERT='LITTLE_ENDIAN')
+Open(10,FILE=bathdatafile,ACCESS='DIRECT',FORM='UNFORMATTED',RECL=86400,CONVERT='LITTLE_ENDIAN',STATUS='OLD')
 
 Call solvejshift(latlon(1),jin,jout,60)
 
@@ -322,7 +324,7 @@ End
 ! (i.e., no storage, simply read and bin)
 !
 
-Subroutine ocnstream(sibdim,coverout,countn)
+Subroutine ocnstream(sibdim,coverout,countn,bathdatafile)
 
 Use ccinterp
 
@@ -335,6 +337,7 @@ Real callon,callat
 Integer, dimension(sibdim(1),sibdim(2)), intent(out) :: countn
 Real, dimension(21600) :: databuffer
 Integer ilat,ilon,lci,lcj,nface
+character(len=*), intent(in) :: bathdatafile
 
 coverout=0
 countn=0
@@ -342,7 +345,7 @@ countn=0
 Write(6,*) "Read ETOPO data (stream)"
 
 ! Must be compiled using 1 byte record lengths
-Open(10,FILE='etopo1_ice_c.flt',ACCESS='DIRECT',FORM='UNFORMATTED',RECL=86400,CONVERT='LITTLE_ENDIAN')
+Open(10,FILE=bathdatafile,ACCESS='DIRECT',FORM='UNFORMATTED',RECL=86400,CONVERT='LITTLE_ENDIAN',STATUS='OLD')
 
 
 Do ilat=1,10800
