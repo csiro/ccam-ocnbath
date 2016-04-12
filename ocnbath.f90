@@ -155,6 +155,7 @@ Write(6,*) '       is less than the minimum length scale of the ETOPO'
 Write(6,*) '       dataset, the code will use the nearest grid point'
 Write(6,*) '       instead of binning.'
 Write(6,*)
+call finishbanner
 Stop
 
 Return
@@ -223,6 +224,7 @@ csize=returnoption('-s',options,nopts)
 read(csize,FMT=*,IOSTAT=ierr) sibsize
 if (ierr/=0) then
   write(6,*) 'ERROR: Invalid array size.  Must be an integer.'
+  call finishbanner
   stop
 end if
 
