@@ -54,6 +54,7 @@ Do i=1,nswitch-1
   If (newswitch.NE.-1) then
     If (lastswitch.NE.-1) then
       Write(6,*) "ERROR: No value for switch "//options(lastswitch,1)
+      call finishbanner
       Stop
     End if
   Else
@@ -62,6 +63,7 @@ Do i=1,nswitch-1
     Else
       ! Later - Non-switches are assumed to be filenames
       Write(6,*) "ERROR: No switch specified for value "//buffer
+      call finishbanner
       Stop
     End if
   Endif
@@ -71,6 +73,7 @@ Enddo
 
 If (newswitch.NE.-1) then
   Write(6,*) "ERROR: No value for switch "//options(newswitch,1)
+  call finishbanner
   Stop
 End If
 
@@ -144,6 +147,7 @@ Do While (.NOT.blank)
   
   If (i.EQ.maxnum) Then
     Write(6,*) "ERROR: maxnum reached in namelist"
+    call finishbanner
     Stop
   End If
 
@@ -153,6 +157,7 @@ num=i-1
 
 If (num.EQ.0) Then
   Write(6,*) "ERROR: Zero elements in namelist"
+  call finishbanner
   Stop
 End If
 

@@ -103,6 +103,7 @@ status=nf_create(outfile,nf_netcdf4,ncidarr(0))
 #endif
 If (status /= nf_noerr) Then
   Write(6,*) "ERROR: Error opening NetCDF file (",status,")"
+  call finishbanner
   Stop
 End If
 
@@ -113,11 +114,13 @@ Do i=1,4
     status=nf_def_dim(ncidarr(0),desc(i,1),dims(i),ncidarr(i))
     If (status /= nf_noerr) Then
       Write(6,*) "ERROR: Error defining dim in NetCDF file (",status,"): ",trim(desc(i,2))
+      call finishbanner
       Stop
     End If
     status=nf_def_var(ncidarr(0),trim(desc(i,1)),nf_float,1,ncidarr(i),dimvar(i))
     If (status /= nf_noerr) Then
       Write(6,*) "ERROR: Error defining dim in NetCDF file (",status,"): ",trim(desc(i,2))
+      call finishbanner
       Stop
     End If
     Do j=2,4
@@ -125,6 +128,7 @@ Do i=1,4
       status=nf_put_att_text(ncidarr(0),dimvar(i),trim(vardesc(j)),strlen,trim(desc(i,j)))
       If (status /= nf_noerr) Then
         Write(6,*) "ERROR: Error defining dim in NetCDF file (",status,"): ",trim(desc(i,j))
+        call finishbanner
         Stop
       End If
     End Do
@@ -138,6 +142,7 @@ If (adate(1)/=0) Then
   status=nf_put_att_text(ncidarr(0),dimvar(4),"time_origin",strlen,trim(timedesc))
   If (status /= nf_noerr) Then
     Write(6,*) "ERROR: Error defining time in NetCDF file (",status,")"
+    call finishbanner
     Stop
   End If
 End If
@@ -225,6 +230,7 @@ status=nf_create(outfile,nf_netcdf4,ncidarr(0))
 #endif
 If (status /= nf_noerr) Then
   Write(6,*) "ERROR: Error opening NetCDF file (",status,")"
+  call finishbanner
   Stop
 End If
 
@@ -234,6 +240,7 @@ Do i=1,4
     status=nf_def_dim(ncidarr(0),desc(i,1),dims(i),ncidarr(i))
     If (status /= nf_noerr) Then
       Write(6,*) "ERROR: Error defining dim in NetCDF file (",status,"): ",trim(desc(i,2))
+      call finishbanner
       Stop
     End If
     if ((i==4).and.(mode=='int')) then
@@ -244,6 +251,7 @@ Do i=1,4
     status=nf_def_var(ncidarr(0),desc(i,1),vtype,1,ncidarr(i),dimvar(i))
     If (status /= nf_noerr) Then
       Write(6,*) "ERROR: Error defining dim in NetCDF file (",status,"): ",trim(desc(i,2))
+      call finishbanner
       Stop
     End If
     If (i/=3) Then
@@ -251,11 +259,13 @@ Do i=1,4
       status=nf_put_att_text(ncidarr(0),dimvar(i),"long_name",strlen,trim(desc(i,2)))
       If (status /= nf_noerr) Then
         Write(6,*) "ERROR: Error defining dim in NetCDF file (",status,"): ",trim(desc(i,2))
+        call finishbanner
         Stop
       End If
       !status=nf_put_att_text(ncidarr(0),dimvar(i),"positive",4,"down")
       !If (status /= nf_noerr) Then
       !  Write(6,*) "ERROR: Error defining dim in NetCDF file (",status,"): ",trim(desc(i,2))
+      !  call finishbanner
       !  Stop
       !End If
     End if
@@ -264,12 +274,14 @@ Do i=1,4
     status=nf_put_att_text(ncidarr(0),dimvar(i),"units",strlen,trim(desc(i,2)))
     If (status /= nf_noerr) Then
       Write(6,*) "ERROR: Error defining dim in NetCDF file (",status,"): ",trim(desc(i,2))
+      call finishbanner
       Stop
     End If
     strlen=Len_trim(desc(i,3))
     status=nf_put_att_text(ncidarr(0),dimvar(i),"point_spacing",strlen,trim(desc(i,3)))
     If (status /= nf_noerr) Then
       Write(6,*) "ERROR: Error defining dim in NetCDF file (",status,"): ",trim(desc(i,3))
+      call finishbanner
       Stop
     End If
     
@@ -283,6 +295,7 @@ If (adate(1)/=0) Then
   status=nf_put_att_text(ncidarr(0),dimvar(4),"time_origin",strlen,trim(timedesc))
   If (status /= nf_noerr) Then
     Write(6,*) "ERROR: Error defining time in NetCDF file (",status,")"
+    call finishbanner
     Stop
   End If
 End If
@@ -324,6 +337,7 @@ Select Case (numdim)
   Case DEFAULT
     Write(6,*) "ERROR: Unsupported number of field dimensions :",numdim
     Write(6,*) "       Please contact MJT and get him to fix it"
+    call finishbanner
     Stop
 End Select
 
@@ -335,6 +349,7 @@ If (status /= nf_noerr) Then
     If (status == nf_noerr) Return
   End if
   Write(6,*) "ERROR: Error defining variable in NetCDF file (",status,") : ",trim(elemdesc(1))
+  call finishbanner
   Stop
 End If
 
@@ -342,20 +357,23 @@ strlen=Len_trim(elemdesc(2))
 status=nf_put_att_text(ncidarr(0),varid,"long_name",strlen,trim(elemdesc(2)))
 If (status /= nf_noerr) Then
   Write(6,*) "ERROR: Error defining var in NetCDF file (",status,"): ",trim(elemdesc(1))
-Stop
+  call finishbanner
+  Stop
 End If
 
 strlen=Len_trim(elemdesc(3))
 status=nf_put_att_text(ncidarr(0),varid,"units",strlen,trim(elemdesc(3)))
 If (status /= nf_noerr) Then
   Write(6,*) "ERROR: Error defining var in NetCDF file (",status,"): ",trim(elemdesc(1))
-Stop
+  call finishbanner
+  Stop
 End If
 
 !status=nf_put_att_int2(ncidarr(0),varid,"missing_value",nf_int2,1,-32500)
 !If (status /= nf_noerr) Then
 !  Write(6,*) "ERROR: Error defining var in NetCDF file (",status,"): ",trim(elemdesc(1))
-!Stop
+!  call finishbanner
+!  Stop
 !End If
 !
 
@@ -364,32 +382,37 @@ if (numtype==nf_short) then
   status=nf_put_att_int2(ncidarr(0),varid,"valid_min",nf_int2,1,ivals2)
   If (status /= nf_noerr) Then
     Write(6,*) "ERROR: Error defining var in NetCDF file (",status,"): ",trim(elemdesc(1))
+    call finishbanner
     Stop
   End If
   ivals2=32500
   status=nf_put_att_int2(ncidarr(0),varid,"valid_max",nf_int2,1,ivals2)
   If (status /= nf_noerr) Then
     Write(6,*) "ERROR: Error defining var in NetCDF file (",status,"): ",trim(elemdesc(1))
+    call finishbanner
     Stop
   End If
   rvals=of
   status=nf_put_att_real(ncidarr(0),varid,"add_offset",nf_float,1,rvals)
   If (status /= nf_noerr) Then
     Write(6,*) "ERROR: Error defining var in NetCDF file (",status,"): ",trim(elemdesc(1))
-  Stop
+    call finishbanner
+    Stop
   End If
   rvals=sc
   status=nf_put_att_real(ncidarr(0),varid,"scale_factor",nf_float,1,rvals)
   If (status /= nf_noerr) Then
     Write(6,*) "ERROR: Error defining var in NetCDF file (",status,"): ",trim(elemdesc(1))
-  Stop
+    call finishbanner
+    Stop
   End If
 end if
 
 status=nf_put_att_text(ncidarr(0),varid,"FORTRAN_format",5,"G11.4")
 If (status /= nf_noerr) Then
   Write(6,*) "ERROR: Error defining var in NetCDF file (",status,"): ",trim(elemdesc(1))
-Stop
+  call finishbanner
+  Stop
 End If
 
 
@@ -423,6 +446,7 @@ Return
 !status=nf_def_var(ncidarr(0),elemdesc(1),numtype,numdim,ncidarr(dimtype),varid)
 !If (status /= nf_noerr) Then
 !  Write(6,*) "ERROR: Error defining variable in NetCDF file (",status,") : ",trim(elemdesc(1))
+!  call finishbanner
 !  Stop
 !End If
 !
@@ -431,7 +455,8 @@ Return
 !  status=nf_put_att_text(ncidarr(0),varid,"long_name",strlen,trim(elemdesc(2)))
 !  If (status /= nf_noerr) Then
 !    Write(6,*) "ERROR: Error defining var in NetCDF file (",status,"): ",trim(elemdesc(1))
-!  Stop
+!    call finishbanner
+!    Stop
 !  End If
 !End If
 !
@@ -441,7 +466,8 @@ Return
 !  status=nf_put_att_text(ncidarr(0),varid,"positive",strlen,trim(elemdesc(3)))
 !  If (status /= nf_noerr) Then
 !    Write(6,*) "ERROR: Error defining var in NetCDF file (",status,"): ",trim(elemdesc(1))
-!  Stop
+!    call finishbanner
+!    Stop
 !  End If
 !End If
 !
@@ -466,6 +492,7 @@ Integer status
 status = nf_enddef(ncidarr(0))
 If (status /= nf_noerr) Then
   Write(6,*) "ERROR: Error ending define mode in NetCDF file (",status,")"
+  call finishbanner
   Stop
 End If
 
@@ -533,6 +560,7 @@ Do i=1,2
   status = nf_put_vara_real(ncidarr(0),dimid(i),nstart,dimnum(i:i),ldata)
   If (status /= nf_noerr) Then
     Write(6,*) "ERROR: Error writing lon and lat data (",status,")"
+    call finishbanner
     Stop
   End If
   Deallocate(ldata)
@@ -543,6 +571,7 @@ If (dimnum(3)/=1) Then
   status = nf_put_vara_real(ncidarr(0),dimid(3),nstart,dimnum(3:3),alvl)
   If (status /= nf_noerr) Then
     Write(6,*) "ERROR: Error writing lvl data (",status,")"
+    call finishbanner
     Stop
   End If
 End If
@@ -557,10 +586,12 @@ select case(vtype)
     status = nf_put_vara_int(ncidarr(0),dimid(4),nstart,dimnum(4:4),nint(atime))
   case DEFAULT
     write(6,*) 'ERROR: Unsupported time vartype ',vtype
+    call finishbanner
     stop
 end select
 If (status /= nf_noerr) Then
   Write(6,*) "ERROR: Error writing time data (",status,")"
+  call finishbanner
   Stop
 End If
 
@@ -601,6 +632,7 @@ nstart=1
 status = nf_put_vara_real(ncidarr(0),dimid(1),nstart,dimnum(1:1),ldata)
 If (status /= nf_noerr) Then
   Write(6,*) "ERROR: Error writing lon data (",status,")"
+  call finishbanner
   Stop
 End If
 Deallocate(ldata)
@@ -609,6 +641,7 @@ nstart=1
 status = nf_put_vara_real(ncidarr(0),dimid(2),nstart,dimnum(2:2),latarr)
 If (status /= nf_noerr) Then
   Write(6,*) "ERROR: Error writing lat data (",status,")"
+  call finishbanner
   Stop
 End If
 
@@ -617,6 +650,7 @@ If (dimnum(3)/=1) Then
   status = nf_put_vara_real(ncidarr(0),dimid(3),nstart,dimnum(3:3),alvl)
   If (status /= nf_noerr) Then
     Write(6,*) "ERROR: Error writing lvl data (",status,")"
+    call finishbanner
     Stop
   End If
 End If
@@ -632,10 +666,12 @@ If (dimnum(4)/=1) Then
       status = nf_put_vara_int(ncidarr(0),dimid(4),nstart,dimnum(4:4),nint(atime))
     case DEFAULT
       write(6,*) 'ERROR: Unsupported time vartype ',vtype
+      call finishbanner
       stop
   end select
   If (status /= nf_noerr) Then
     Write(6,*) "ERROR: Error writing time data (",status,")"
+    call finishbanner
     Stop
   End If
 Else
@@ -645,6 +681,7 @@ Else
   status = nf_put_vara_real(ncidarr(0),dimid(4),nstart,ncount,rvals)
   If (status /= nf_noerr) Then
     Write(6,*) "ERROR: Error writing time data (",status,")"
+    call finishbanner
     Stop
   End If
 End If
@@ -737,6 +774,7 @@ If (numofdim.GT.4) Then
   Write(6,*) "ERROR Max number of dimensions reached."
   Write(6,*) "      Please contact MJT and get him to"
   Write(6,*) "      fix this."
+  call finishbanner
   Stop
 End if
 
@@ -759,12 +797,14 @@ Select Case(xtype)
 
   Case DEFAULT
     Write(6,*) "ERROR: Internal error in ncwritedat.  Unknown vartype ",xtype
+    call finishbanner
     Stop
   
 End select
 
 If (status /= nf_noerr) Then
   Write(6,*) "ERROR: Error writing data to NetCDF file (",status,")"
+  call finishbanner
   Stop
 End If
 
@@ -789,6 +829,7 @@ Integer status
 status=nf_close(ncidarr(0))
 If (status /= nf_noerr) Then
   Write(6,*) "ERROR: Error closing NetCDF file (",status,")"
+  call finishbanner
   Stop
 End If
 
@@ -846,6 +887,7 @@ Select Case(mthnum)
   
   Case DEFAULT
     Write(6,*) "ERROR: Invaid month"
+    call finishbanner
     Stop
     
 End Select

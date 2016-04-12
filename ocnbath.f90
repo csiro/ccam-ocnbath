@@ -75,15 +75,24 @@ Deallocate(options)
 
 ! Complete
 write(6,*) "CCAM: ocnbath completed successfully"
-      
+call finishbanner
+
+Stop
+End
+
+subroutine finishbanner
+
+implicit none
+
 ! End banner
 write(6,*) "=================================================================================="
 write(6,*) "CCAM: Finished ocnbath"
 write(6,*) "=================================================================================="
 
-Stop
-End
+return
+end
 
+    
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! This subroutine displays the help message
 !
