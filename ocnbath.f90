@@ -35,6 +35,12 @@ logical :: bathfilt = .false.
 
 Namelist/ocnnml/ topofile,bathout,fastocn,binlimit,bathfilt,bathdatafile
 
+! Start banner
+write(6,*) "=================================================================================="
+write(6,*) "CCAM: Starting ocnbath"
+write(6,*) "=================================================================================="
+
+
 #ifndef stacklimit
 ! For linux only - removes stacklimit on all processors
 call setstacklimit(-1)
@@ -66,6 +72,14 @@ fname(3)=bathdatafile
 Call createocn(options,nopts,fname,fastocn,bathfilt,binlimit)
 
 Deallocate(options)
+
+! Complete
+write(6,*) "CCAM: ocnbath completed successfully"
+      
+! End banner
+write(6,*) "=================================================================================="
+write(6,*) "CCAM: Finished ocnbath"
+write(6,*) "=================================================================================="
 
 Stop
 End
