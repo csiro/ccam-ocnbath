@@ -25,6 +25,8 @@ Program ocnbath
 
 Implicit None
 
+include 'version.h'
+
 Character*80, dimension(:,:), allocatable :: options
 Character*130, dimension(3) :: fname
 Character*130 topofile,bathout,bathdatafile
@@ -36,9 +38,9 @@ logical :: bathfilt = .false.
 Namelist/ocnnml/ topofile,bathout,fastocn,binlimit,bathfilt,bathdatafile
 
 ! Start banner
-write(6,*) "=================================================================================="
+write(6,*) "==============================================================================="
 write(6,*) "CCAM: Starting ocnbath"
-write(6,*) "=================================================================================="
+write(6,*) "==============================================================================="
 
 
 #ifndef stacklimit
@@ -46,7 +48,8 @@ write(6,*) "====================================================================
 call setstacklimit(-1)
 #endif 
 
-Write(6,*) 'OCNBATH - ETOPO 2km to CC grid (FEB-16)'
+Write(6,*) 'OCNBATH - ETOPO 2km to CC grid'
+write(6,*) version
 
 ! Read switches
 nopts=1
@@ -85,9 +88,9 @@ subroutine finishbanner
 implicit none
 
 ! End banner
-write(6,*) "=================================================================================="
+write(6,*) "==============================================================================="
 write(6,*) "CCAM: Finished ocnbath"
-write(6,*) "=================================================================================="
+write(6,*) "==============================================================================="
 
 return
 end

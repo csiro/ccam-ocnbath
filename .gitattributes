@@ -20,4 +20,5 @@
 /readswitch.f90 -text
 /setxyz_m.f90 -text
 /stacklimit.c -text
+/version.h -text
 /xyzinfo_m.f90 -text
