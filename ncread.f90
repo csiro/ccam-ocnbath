@@ -189,7 +189,7 @@ if (ierr.ne.0) then
   Write(6,*) "ERROR: Cannot read nc date."
   Write(6,*) "       Please contact MJT and get him to fix this."
   call finishbanner
-  Stop
+  Stop -1
 end if
 
 Return
@@ -226,14 +226,14 @@ Call ncfindvarid(ncid,varname,outname,varid)
 If (outname.EQ.'') Then
   Write(6,*) "ERROR: Cannot determine var id ",trim(varname)," (",ncstatus,")"
   call finishbanner
-  Stop
+  Stop -1
 End If
 
 ncstatus = nf_inq_varndims(ncid,varid,ndims)
 If (ncstatus.NE.nf_noerr) Then
   Write(6,*) "ERROR: Cannot determine var dims ",trim(varname)," (",ncstatus,")"
   call finishbanner
-  Stop
+  Stop -1
 End If
 
 If (ndims.GT.maxdim) Then
@@ -248,7 +248,7 @@ ncstatus=nf_inq_vardimid(ncid,varid,cid)
 If (ncstatus.NE.nf_noerr) Then
   Write(6,*) "ERROR: Cannot determine var dimid ",trim(varname)," (",ncstatus,")"
   call finishbanner
-  Stop
+  Stop -1
 End If
 
 ! Determine lon, lat, level and time index
@@ -278,7 +278,7 @@ Do i=1,ndims
       Write(6,*) "ERROR: Internal error in getncarray.  dumnum > maxdim."
       Write(6,*) "       Please contact MJT and get him to fix this."
       call finishbanner
-      Stop
+      Stop -1
     End If
     dumcount(dumnum)=npos(i)
     duminx(dumnum)=inx(i)
@@ -294,7 +294,7 @@ ncstatus = nf_get_vara_real(ncid,varid,startpos,npos,dumarr)
 If (ncstatus.NE.nf_noerr) Then
   Write(6,*) "ERROR: Cannot read var ",trim(varname)," data (",ncstatus,")"
   call finishbanner
-  Stop
+  Stop -1
 End If
 
 
@@ -439,7 +439,7 @@ ncstatus = nf_inq_dimlen(ncid,valident,valnum)
 If (ncstatus/=nf_noerr) Then
   Write(6,*) "ERROR: Cannot determine length of ",trim(valname)," (",ncstatus,")"
   call finishbanner
-  Stop
+  Stop -1
 End If
 
 Return
@@ -501,7 +501,7 @@ ncstatus = nf_get_vara_real(ncid,valident,nstart,ncount,vallab)
 If (ncstatus/=nf_noerr) Then
   Write(6,*) "ERROR: Cannot read ",trim(outname)," data (",ncstatus,")"
   call finishbanner
-  Stop
+  Stop -1
 End If
 
 Return
@@ -603,7 +603,7 @@ Else
     If (ncstatus.NE.nf_noerr) Then
       Write(6,*) "ERROR: Cannot read id for ",trim(outname)
       call finishbanner
-      Stop
+      Stop -1
     End If
   Else
 
@@ -761,7 +761,7 @@ Call getncdims(ncid,ncdim)
 If (lvlnum.NE.ncdim(3)) Then
   Write(6,*) 'ERROR: Internal error in nccallvlheight'
   call finishbanner
-  Stop
+  Stop -1
 End If
 
 ! Define height array
@@ -924,7 +924,7 @@ If (utype.NE.otype) Then
       Write(6,*) "ERROR: Cannot convert from unit ",trim(utype)
       Write(6,*) "       Please contact MJT and get him to fix this."
       call finishbanner
-      Stop
+      Stop -1
       
   End Select
 
@@ -937,7 +937,7 @@ If (utype.NE.otype) Then
       Write(6,*) "ERROR: Cannot convert to unit ",trim(otype)
       Write(6,*) "       Please contact MJT and get him to fix this."
       call finishbanner
-      Stop
+      Stop -1
   
   End Select
 
@@ -1008,7 +1008,7 @@ If (utype.NE.otype) Then
       Write(6,*) "ERROR: Cannot convert from velocity unit ",trim(utype)
       Write(6,*) "       Please contact MJT and get him to fix this"
       call finishbanner
-      Stop
+      Stop -1
   
   End Select
   
@@ -1021,7 +1021,7 @@ If (utype.NE.otype) Then
       Write(6,*) "ERROR: Cannot convert to velocity unit ",trim(otype)
       Write(6,*) "       Please contact MJT and get him to fix this"
       call finishbanner
-      Stop
+      Stop -1
   
   End Select
 End If
@@ -1089,13 +1089,13 @@ Select Case(varname(1))
           Write(6,*) "ERROR: Surface geopotential height requested"
           Write(6,*) "       at multiple levels."
           call finishbanner
-          Stop
+          Stop -1
 	End if
       Else
         Write(6,*) "ERROR: Cannot find surface geopotential height"
         Write(6,*) "       or topography in input file."
         call finishbanner
-        Stop
+        Stop -1
       End if
     End if
     
@@ -1104,7 +1104,7 @@ Select Case(varname(1))
     If (outname.EQ.'') Then
       Write(6,*) "ERROR: Cannot locate "//trim(varname(1))//" in nc file."
       call finishbanner
-      Stop
+      Stop -1
     End if
     If (outname.NE.varname(1)) Write(6,*) "Located "//trim(varname(1))//" as "//trim(outname)
     Call getncarray(ncid,outname,arrsize,arrdata)
@@ -1213,19 +1213,19 @@ if (ierr==nf_noerr) then
   if (ierr/=nf_noerr) then
     write(6,*) "ERROR reading lon0"
     call finishbanner
-    stop
+    stop -1
   end if
   ierr=nf_get_att_real(ncid,nf_global,'lat0',lonlat(2))
   if (ierr/=nf_noerr) then
     write(6,*) "ERROR reading lat0"
     call finishbanner
-    stop
+    stop -1
   end if
   ierr=nf_get_att_real(ncid,nf_global,'schmidt',rvals(1))
   if (ierr/=nf_noerr) then
     write(6,*) "ERROR reading schmidt"
     call finishbanner
-    stop
+    stop -1
   end if
   schmidt=rvals(1)
   ierr=nf_inq_dimid(ncid,'longitude',varid)
@@ -1241,7 +1241,7 @@ else
   If (ierr.NE.0) then
     Write(6,*) "ERROR: Cannot read file ",trim(toponame)
     call finishbanner
-    Stop
+    Stop -1
   End if
 end if
 
@@ -1292,7 +1292,7 @@ end if
 If (ierr/=0) then
   Write(6,*) "ERROR: Cannot read file ",trim(toponame)
   call finishbanner
-  Stop
+  Stop -1
 End if
 
 lsmsk=1.-lsmsk
@@ -1330,13 +1330,13 @@ if (ierr==0) then
   if (ierr/=0) then
     write(6,*) "ERROR reading zs ",ierr
     call finishbanner
-    stop
+    stop -1
   end if
   ierr=nf_get_vara_real(ncid,varid,spos,npos,hgt)
   if (ierr/=0) then
     write(6,*) "ERROR reading zs ",ierr
     call finishbanner
-    stop
+    stop -1
   end if
   hgt=9.80616*hgt
   ierr=nf_inq_varid(ncid,'lsm',varid)
@@ -1357,7 +1357,7 @@ end if
 If (ierr/=0) then
   Write(6,*) "ERROR: Cannot read file ",trim(toponame)
   call finishbanner
-  Stop
+  Stop -1
 End if
 
 lsmsk=1.-lsmsk

@@ -629,7 +629,8 @@ Select Case(mode)
     ! Do nothing
   Case Default
     Write(6,*) 'ERROR: Internal error.  Unsupported mode in searchdim'
-    Stop
+    call finishbanner
+    Stop -1
 End Select
 
 If (.NOT.Any(sermask)) then

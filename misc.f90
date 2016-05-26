@@ -198,7 +198,7 @@ Select Case(inunit)
     Write(6,*) "ERROR: Unknown unit ",trim(inunit)," for conversion."
     Write(6,*) "       Please contact MJT and get him to fix this."
     call finishbanner
-    Stop
+    Stop -1
   
 End Select
 
@@ -208,7 +208,7 @@ Else
   If ((baseunit.NE.actunit).AND.(actunit.NE.'none')) Then
     Write(6,*) "ERROR: Mismatched units ",trim(baseunit)," and ",trim(actunit)
     call finishbanner
-    Stop
+    Stop -1
   End If
 End If
 
@@ -354,7 +354,7 @@ Do While(outdate(3)>maxday)
     Case DEFAULT
       Write(6,*) "ERROR: Internal error in advdate"
       call finishbanner
-      Stop
+      Stop -1
   
   End Select
   
@@ -445,11 +445,11 @@ Real m
 If (posout<Minval(posin)) Then
   Write(6,*) "ERROR: Must extrapolate below lowest value"
   call finishbanner
-  Stop
+  Stop -1
 Else If (posout>Maxval(posin)) Then
   Write(6,*) "ERROR: Must extrapolate above highest value"
   call finishbanner
-  Stop
+  Stop -1
 end if
 
 ! interpolate
@@ -506,7 +506,7 @@ Read(instr,*,iostat=ierr) sr
 if (ierr/=0) then
   Write(6,*) "ERROR: String "//trim(instr)//" is not a number."
   call finishbanner
-  Stop
+  Stop -1
 end if
 
 Return

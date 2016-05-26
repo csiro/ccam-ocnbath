@@ -228,7 +228,7 @@ read(csize,FMT=*,IOSTAT=ierr) sibsize
 if (ierr/=0) then
   write(6,*) 'ERROR: Invalid array size.  Must be an integer.'
   call finishbanner
-  stop
+  stop -1
 end if
 
 ! Read topography file
