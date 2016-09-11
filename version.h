@@ -1,1 +1,1 @@
-      character(len=*), parameter :: version ='OCNBATH r2935:2945M'
+      character(len=*), parameter :: version ='OCNBATH r2935:3007M'

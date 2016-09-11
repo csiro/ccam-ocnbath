@@ -616,243 +616,165 @@ subroutine fill_cc(a_io,ik,land_in)
       
 implicit none
       
-integer :: nrem, i, ii, ik, iq, ind, j, n, neighb, ndiag
-integer :: iminb,imaxb,jminb,jmaxb,nrem_l
-integer, save :: oldik = 0
-integer, dimension(:,:), allocatable, save :: ic
-integer, dimension(0:5) :: imin,imax,jmin,jmax
-integer, dimension(0:5) :: npann,npane,npanw,npans
+integer :: ik
 real, dimension(ik*ik*6), intent(inout) :: a_io         ! input and output array
-real, dimension(ik*ik*6) :: a
-real av     
 logical, dimension(ik*ik*6), intent(in) :: land_in
-logical, dimension(ik*ik*6) :: land_a,land_b
-logical, dimension(4) :: mask
-data npann/1,103,3,105,5,101/,npane/102,2,104,4,100,0/
-data npanw/5,105,1,101,3,103/,npans/104,0,100,2,102,4/
-ind(i,j,n)=i+(j-1)*ik+n*ik*ik  ! *** for n=0,npanels
 
-land_b=land_in
-     
-if (ik/=oldik) then
- oldik=ik
- if (allocated(ic)) then
-   deallocate(ic)
- end if
- allocate(ic(4,ik*ik*6))
- do iq=1,ik*ik*6
-   ic(1,iq)=iq+ik
-   ic(2,iq)=iq-ik
-   ic(3,iq)=iq+1
-   ic(4,iq)=iq-1
- enddo   ! iq loop
- do n=0,5
-  if(npann(n)<100)then
-   do ii=1,ik
-     ic(1,ind(ii,ik,n))=ind(ii,1,npann(n))
-   enddo    ! ii loop
-  else
-   do ii=1,ik
-     ic(1,ind(ii,ik,n))=ind(1,ik+1-ii,npann(n)-100)
-   enddo    ! ii loop
-  endif      ! (npann(n)<100)
-  if(npane(n)<100)then
-   do ii=1,ik
-     ic(3,ind(ik,ii,n))=ind(1,ii,npane(n))
-   enddo    ! ii loop
-  else
-   do ii=1,ik
-     ic(3,ind(ik,ii,n))=ind(ik+1-ii,1,npane(n)-100)
-   enddo    ! ii loop
-  endif      ! (npane(n)<100)
-  if(npanw(n)<100)then
-   do ii=1,ik
-     ic(4,ind(1,ii,n))=ind(ik,ii,npanw(n))
-   enddo    ! ii loop
-  else
-   do ii=1,ik
-     ic(4,ind(1,ii,n))=ind(ik+1-ii,ik,npanw(n)-100)
-   enddo    ! ii loop
-  endif      ! (npanw(n)<100)
-  if(npans(n)<100)then
-   do ii=1,ik
-     ic(2,ind(ii,1,n))=ind(ii,ik,npans(n))
-   enddo    ! ii loop
-  else
-   do ii=1,ik
-     ic(2,ind(ii,1,n))=ind(ik,ik+1-ii,npans(n)-100)
-   enddo    ! ii loop
-  endif      ! (npans(n)<100)
- enddo      ! n loop
-end if ! oldik/=ik
+call fill_cc_a(a_io,ik,1,land_in)
 
-imin=1
-imax=ik
-jmin=1
-jmax=ik
-          
-nrem = 1    ! Just for first iteration
-do while ( nrem > 0)
-  nrem=0
-  a(:)=a_io(:)
-  land_a(:)=land_b(:)
-  do n=0,5
-    iminb=ik
-    imaxb=1
-    jminb=ik
-    jmaxb=1
-    nrem_l=0
-    do j=jmin(n),jmax(n)
-      do i=imin(n),imax(n)
-        iq=ind(i,j,n)
-        if(.not.land_a(iq))then
-          mask=land_a(ic(:,iq))
-          neighb=count(mask)
-          if(neighb>0)then
-            av=sum(a(ic(:,iq)),mask)
-            a_io(iq)=av/real(neighb)
-            land_b(iq)=.true.
-          else
-            iminb=min(i,iminb)
-            imaxb=max(i,imaxb)
-            jminb=min(j,jminb)
-            jmaxb=max(j,jmaxb)
-            nrem=nrem+1   ! current number of points without a neighbour
-            nrem_l=nrem_l+1
-          endif
-        endif
-      end do
-    end do
-    if (nrem_l>0) then
-      imin(n)=iminb
-      imax(n)=imaxb
-      jmin(n)=jminb
-      jmax(n)=jmaxb
-    else
-      imax(n)=imin(n)-1
-      jmax(n)=jmin(n)-1
-    end if
-  end do
-end do
 return
 end
 
+subroutine fill_cc_mask(a_io,ik,land_in,reqmask)
+      
+implicit none
+      
+integer :: ik
+real, dimension(ik*ik*6), intent(inout) :: a_io         ! input and output array
+logical, dimension(ik*ik*6), intent(in) :: land_in
+logical, dimension(ik*ik*6), intent(in) :: reqmask
+
+call fill_cc_a_mask(a_io,ik,1,land_in,reqmask)  
+
+return
+end
+
+    
 subroutine fill_cc_a(a_io,ik,rng,land_in)
       
 implicit none
       
-integer :: nrem,i,ii,ik,iq,ind,j,n,neighb,ndiag
-integer :: iminb,imaxb,jminb,jmaxb,rng
-integer, save :: oldik = 0
-integer, dimension(:,:), allocatable, save :: ic
-integer, dimension(0:5) :: imin,imax,jmin,jmax
-integer, dimension(0:5) :: npann,npane,npanw,npans
+integer, intent(in) :: ik, rng
 real, dimension(ik*ik*6,rng), intent(inout) :: a_io         ! input and output array
-real, dimension(ik*ik*6,rng) :: a
-real, dimension(rng) :: av     
 logical, dimension(ik*ik*6), intent(in) :: land_in
-logical, dimension(ik*ik*6) :: land_a,land_b
-logical, dimension(4) :: mask
-data npann/1,103,3,105,5,101/,npane/102,2,104,4,100,0/
-data npanw/5,105,1,101,3,103/,npans/104,0,100,2,102,4/
-ind(i,j,n)=i+(j-1)*ik+n*ik*ik  ! *** for n=0,npanels
+logical, dimension(ik*ik*6) :: reqmask
 
-land_b=land_in
-     
-if (ik/=oldik) then
- oldik=ik
- if (allocated(ic)) then
-   deallocate(ic)
- end if
- allocate(ic(4,ik*ik*6))
- do iq=1,ik*ik*6
-   ic(1,iq)=iq+ik
-   ic(2,iq)=iq-ik
-   ic(3,iq)=iq+1
-   ic(4,iq)=iq-1
- enddo   ! iq loop
- do n=0,5
-  if(npann(n)<100)then
-   do ii=1,ik
-     ic(1,ind(ii,ik,n))=ind(ii,1,npann(n))
-   enddo    ! ii loop
-  else
-   do ii=1,ik
-     ic(1,ind(ii,ik,n))=ind(1,ik+1-ii,npann(n)-100)
-   enddo    ! ii loop
-  endif      ! (npann(n)<100)
-  if(npane(n)<100)then
-   do ii=1,ik
-     ic(3,ind(ik,ii,n))=ind(1,ii,npane(n))
-   enddo    ! ii loop
-  else
-   do ii=1,ik
-     ic(3,ind(ik,ii,n))=ind(ik+1-ii,1,npane(n)-100)
-   enddo    ! ii loop
-  endif      ! (npane(n)<100)
-  if(npanw(n)<100)then
-   do ii=1,ik
-     ic(4,ind(1,ii,n))=ind(ik,ii,npanw(n))
-   enddo    ! ii loop
-  else
-   do ii=1,ik
-     ic(4,ind(1,ii,n))=ind(ik+1-ii,ik,npanw(n)-100)
-   enddo    ! ii loop
-  endif      ! (npanw(n)<100)
-  if(npans(n)<100)then
-   do ii=1,ik
-     ic(2,ind(ii,1,n))=ind(ii,ik,npans(n))
-   enddo    ! ii loop
-  else
-   do ii=1,ik
-     ic(2,ind(ii,1,n))=ind(ik,ik+1-ii,npans(n)-100)
-   enddo    ! ii loop
-  endif      ! (npans(n)<100)
- enddo      ! n loop
-end if ! oldik/=ik
+reqmask = .true.
+call fill_cc_a_mask(a_io,ik,rng,land_in,reqmask)
 
-imin=1
-imax=ik
-jmin=1
-jmax=ik
-          
-nrem = 1    ! Just for first iteration
-do while ( nrem > 0)
-  nrem=0
-  a(:,:)=a_io(:,:)
-  land_a(:)=land_b(:)
-  do n=0,5
-    iminb=ik
-    imaxb=1
-    jminb=ik
-    jmaxb=1
-    do j=jmin(n),jmax(n)
-      do i=imin(n),imax(n)
-        iq=ind(i,j,n)
-        if(.not.land_a(iq))then
-          mask=land_a(ic(:,iq))
-          neighb=count(mask)
-          if(neighb>0)then
-            do ii=1,rng
-              av(ii)=sum(a(ic(:,iq),ii),mask)
-              a_io(iq,ii)=av(ii)/real(neighb)
-            end do
-            land_b(iq)=.true.
-          else
-            iminb=min(i,iminb)
-            imaxb=max(i,imaxb)
-            jminb=min(j,jminb)
-            jmaxb=max(j,jmaxb)
-            nrem=nrem+1   ! current number of points without a neighbour
-          endif
-        endif
-      end do
-    end do
-    imin(n)=iminb
-    imax(n)=imaxb
-    jmin(n)=jminb
-    jmax(n)=jmaxb
-  end do
-end do
 return
 end
+    
+subroutine fill_cc_a_mask(a_io,ik,rng,land_in,reqmask)
+      
+implicit none
+      
+integer, intent(in) :: ik, rng
+integer :: i,ii,j,n,neighb
+integer :: iminb,imaxb,jminb,jmaxb
+integer :: n_n, n_s, n_e, n_w
+integer, dimension(0:5) :: imin,imax,jmin,jmax
+real, dimension(ik*ik*6,rng), intent(inout) :: a_io         ! input and output array
+real, dimension(ik,ik,0:5) :: a_io_unpack
+real, dimension(0:ik+1,0:ik+1,0:5) :: a_unpack
+real, dimension(4) :: av     
+logical, dimension(ik*ik*6), intent(in) :: land_in
+logical, dimension(ik,ik,0:5) :: land_b
+logical, dimension(0:ik+1,0:ik+1,0:5) :: land_a
+logical, dimension(4) :: mask
+logical, dimension(ik*ik*6), intent(in) :: reqmask
+logical, dimension(ik,ik,0:5) :: finish_mask
+
+do ii = 1,rng
+    
+  imin=1
+  imax=ik
+  jmin=1
+  jmax=ik
+  
+  do n = 0,5    
+    finish_mask(:,:,n) = .not.reshape( reqmask(n*ik*ik+1:(n+1)*ik*ik), (/ ik, ik /) )
+  end do
+  
+  do n = 0,5    
+    a_io_unpack(1:ik,1:ik,n) = reshape( a_io(n*ik*ik+1:(n+1)*ik*ik,ii), (/ ik, ik /) )
+    land_b(:,:,n) = reshape( land_in(n*ik*ik+1:(n+1)*ik*ik), (/ ik, ik /) )
+  end do
+  
+  finish_mask(:,:,:) = finish_mask(:,:,:) .or. land_b(:,:,:)
+
+  do while ( any(.not.finish_mask) )
+    a_unpack(1:ik,1:ik,:)=a_io_unpack(1:ik,1:ik,:)
+    land_a(1:ik,1:ik,:)=land_b(1:ik,1:ik,:)
+  
+    ! update panel boundaries
+    do n = 0,5
+      if ( mod(n,2)==0 ) then
+        n_w = mod(n+5, 6)
+        n_e = mod(n+2, 6)
+        n_n = mod(n+1, 6)
+        n_s = mod(n+4, 6)
+        do i = 1,ik
+          a_unpack(0,i,n)    = a_unpack(ik,i,n_w)
+          a_unpack(ik+1,i,n) = a_unpack(ik+1-i,1,n_e)
+          a_unpack(i,ik+1,n) = a_unpack(i,1,n_n)
+          a_unpack(i,0,n)    = a_unpack(ik,ik+1-i,n_s)
+          land_a(0,i,n)    = land_a(ik,i,n_w)
+          land_a(ik+1,i,n) = land_a(ik+1-i,1,n_e)
+          land_a(i,ik+1,n) = land_a(i,1,n_n)
+          land_a(i,0,n)    = land_a(ik,ik+1-i,n_s)
+        end do ! i
+      else
+        n_w = mod(n+4, 6)
+        n_e = mod(n+1, 6)
+        n_n = mod(n+2, 6)
+        n_s = mod(n+5, 6)
+        do i = 1,ik
+          a_unpack(0,i,n)    = a_unpack(ik+1-i,ik,n_w)
+          a_unpack(ik+1,i,n) = a_unpack(1,i,n_e)
+          a_unpack(i,ik+1,n) = a_unpack(1,ik+1-i,n_n)
+          a_unpack(i,0,n)    = a_unpack(i,ik,n_s)
+          land_a(0,i,n)    = land_a(ik+1-i,ik,n_w)
+          land_a(ik+1,i,n) = land_a(1,i,n_e)
+          land_a(i,ik+1,n) = land_a(1,ik+1-i,n_n)
+          land_a(i,0,n)    = land_a(i,ik,n_s)
+        end do ! i
+      end if   ! mod(n,2)==0 ..else..
+    end do     ! n loop
+ 
+    do n=0,5
+      iminb=ik
+      imaxb=1
+      jminb=ik
+      jmaxb=1
+      do j=jmin(n),jmax(n)
+        do i=imin(n),imax(n)
+          if(.not.land_a(i,j,n))then
+            mask(1)=land_a(i+1,j,n)
+            mask(2)=land_a(i-1,j,n)
+            mask(3)=land_a(i,j+1,n)
+            mask(4)=land_a(i,j-1,n)
+            neighb=count(mask)
+            if(neighb>0)then
+              av(1) = a_unpack(i+1,j,n)
+              av(2) = a_unpack(i-1,j,n)
+              av(3) = a_unpack(i,j+1,n)
+              av(4) = a_unpack(i,j-1,n)
+              a_io_unpack(i,j,n) = sum(av,mask)/real(neighb)
+              land_b(i,j,n) = .true.
+              finish_mask(i,j,n) = .true.
+            else
+              iminb=min(i,iminb)
+              imaxb=max(i,imaxb)
+              jminb=min(j,jminb)
+              jmaxb=max(j,jmaxb)
+            endif
+         endif
+        end do
+      end do
+      imin(n)=iminb
+      imax(n)=imaxb
+      jmin(n)=jminb
+      jmax(n)=jmaxb
+    end do
+  end do
+
+  do n = 0,5
+    a_io(n*ik*ik+1:(n+1)*ik*ik,ii) = reshape( a_io_unpack(1:ik,1:ik,n), (/ ik*ik /) )
+  end do
+  
+end do ! ii loop
+
+
+return
+end    

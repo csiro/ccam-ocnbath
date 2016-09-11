@@ -1,6 +1,6 @@
 ! Conformal Cubic Atmospheric Model
     
-! Copyright 2015 Commonwealth Scientific Industrial Research Organisation (CSIRO)
+! Copyright 2015-2016 Commonwealth Scientific Industrial Research Organisation (CSIRO)
     
 ! This file is part of the Conformal Cubic Atmospheric Model (CCAM)
 !
@@ -19,23 +19,23 @@
 
 !------------------------------------------------------------------------------
     
-Program ocnbath
+program ocnbath
 
 ! This code creates CCAM ocean depth data using the ETOPO2 dataset
 
-Implicit None
+implicit None
 
 include 'version.h'
 
-Character*80, dimension(:,:), allocatable :: options
-Character*130, dimension(3) :: fname
-Character*130 topofile,bathout,bathdatafile
+character*80, dimension(:,:), allocatable :: options
+character*130, dimension(4) :: fname
+character*130 topofile,bathout,bathdatafile,riverdatapath
 integer :: binlimit = 4
-Integer nopts
-Logical :: fastocn = .true.
+integer nopts
+logical :: fastocn = .true.
 logical :: bathfilt = .false.
 
-Namelist/ocnnml/ topofile,bathout,fastocn,binlimit,bathfilt,bathdatafile
+namelist/ocnnml/ topofile,bathout,fastocn,binlimit,bathfilt,bathdatafile,riverdatapath
 
 ! Start banner
 write(6,*) "=============================================================================="
@@ -53,35 +53,37 @@ write(6,*) version
 
 ! Read switches
 nopts=1
-Allocate (options(nopts,2))
+allocate (options(nopts,2))
 options(:,1) = (/ '-s' /)
 options(:,2) = ''
 
-Call readswitch(options,nopts)
-Call defaults(options,nopts)
+call readswitch(options,nopts)
+call defaults(options,nopts)
 
 bathdatafile="etopo1_ice_c.flt"
+riverdatapath=""
 
 ! Read namelist
-Write(6,*) 'Input &ocnnml namelist'
-Read(5,NML=ocnnml)
-Write(6,*) 'Namelist accepted'
+write(6,*) 'Input &ocnnml namelist'
+read(5,NML=ocnnml)
+write(6,*) 'Namelist accepted'
 
 ! Generate veg data
 fname(1)=topofile
 fname(2)=bathout
 fname(3)=bathdatafile
+fname(4)=riverdatapath
 
-Call createocn(options,nopts,fname,fastocn,bathfilt,binlimit)
+call createocn(options,nopts,fname,fastocn,bathfilt,binlimit)
 
-Deallocate(options)
+deallocate(options)
 
 ! Complete
 write(6,*) "CCAM: ocnbath completed successfully"
 call finishbanner
 
-Stop
-End
+stop
+end
 
 subroutine finishbanner
 
@@ -120,7 +122,8 @@ Write(6,*)
 Write(6,*) '  &ocnnml'
 Write(6,*) '    topofile="topout"'
 Write(6,*) '    bathout="bath"'
-Write(6,*) '    bathdata="etopo1_ice_c.flt"'
+Write(6,*) '    bathdatafile="etopo1_ice_c.flt"'
+Write(6,*) '    riverdatapath=""'
 Write(6,*) '    fastocn=t'
 Write(6,*) '    bathfilt=t'
 Write(6,*) '    binlimit=4'
@@ -131,7 +134,8 @@ Write(6,*) '    topofile      = topography (input) file'
 Write(6,*) '    bathout       = Depth filename'
 Write(6,*) '    fastocn       = Turn on fastocn mode (see notes below)'
 Write(6,*) '    bathfilt      = Filter bathymetry'
-Write(6,*) '    bathdata      = Location of input bathymetry data'
+Write(6,*) '    bathdatafile  = Location of input bathymetry data'
+Write(6,*) '    riverdatapath = Location of input river accumulation data'
 Write(6,*) '    binlimit      = The minimum ratio between the grid'
 Write(6,*) '                    length scale and the length scale of'
 Write(6,*) '                    the aggregated ETOPO data (see notes'
@@ -200,23 +204,24 @@ implicit None
 integer, intent(in) :: nopts,binlimit
 integer, dimension(2) :: sibdim
 integer, dimension(4) :: dimnum,dimid,dimcount
+integer, dimension(2) :: varid
 integer, dimension(6) :: adate
 integer, dimension(0:4) :: ncidarr
 integer, dimension(:,:), allocatable :: in,ie,is,iw
 integer sibsize,tunit,i,j,k,ierr
-integer varid
 integer inx,iny,isx,isy,iex,iey,iwx,iwy
 integer nfilt
 integer, parameter :: nfiltmax = 1
 real, dimension(:,:,:), allocatable :: rlld
 real, dimension(:,:), allocatable :: gridout,lsdata,ocndata,topdata,depth,dum
+real, dimension(:,:), allocatable :: riveracc
 real, dimension(3,2) :: alonlat
 real, dimension(2) :: lonlat
 real, dimension(1) :: alvl
 real, dimension(1) :: atime
 real schmidt,dsx,ds
 character(len=*), dimension(1:nopts,1:2), intent(in) :: options
-character(len=*), dimension(1:3), intent(in) :: fname
+character(len=*), dimension(1:4), intent(in) :: fname
 character*80, dimension(1:3) :: outputdesc
 character*80 returnoption,csize
 character*45 header
@@ -243,26 +248,27 @@ allocate(ocndata(sibdim(1),sibdim(2)),topdata(sibdim(1),sibdim(2)))
 allocate(lsdata(sibdim(1),sibdim(2)),depth(sibdim(1),sibdim(2)))
 allocate(in(sibdim(1),sibdim(2)),ie(sibdim(1),sibdim(2)))
 allocate(is(sibdim(1),sibdim(2)),iw(sibdim(1),sibdim(2)))
+allocate(riveracc(sibdim(1),sibdim(2)))
+allocate(dum(sibdim(1),sibdim(2)))
 
 Call gettopohgt(tunit,fname(1),topdata,lsdata,sibdim)
-lsdata=1.-lsdata
+lsdata = 1. - lsdata
 
 ! Determine lat/lon to CC mapping
 call cgg2(rlld,gridout,sibdim,lonlat,schmidt,ds,in,ie,is,iw)
 
 ! Read ETOPO data
-call getdata(ocndata,lonlat,gridout,rlld,sibdim,sibsize,fastocn,binlimit,fname(3))
+call getdata(ocndata,lonlat,gridout,rlld,sibdim,sibsize,fastocn,binlimit,fname(3),'bath')
 
 ! Calculate depth
-where (lsdata<0.5)
-  depth=max(topdata/9.8-ocndata,1.)
+where ( lsdata<0.5 )
+  depth = max(topdata/9.8-ocndata, 1.)
 elsewhere
-  depth=0.
+  depth = 0.
 end where
 
 ! Filter bathymetry
 if (bathfilt) then
-  allocate(dum(sibdim(1),sibdim(2)))
   do nfilt=1,nfiltmax
     dum=depth
     do j=1,sibdim(2)
@@ -281,8 +287,10 @@ if (bathfilt) then
       end do
     end do
   end do
-  deallocate(dum)
 end if
+
+! calculate river routing directions
+call getdata(riveracc,lonlat,gridout,rlld,sibdim,sibsize,fastocn,binlimit,fname(4),'river')
 
 ! Prep netcdf output
 Write(6,*) 'Write depth data'
@@ -295,7 +303,11 @@ call ncinitcc(ncidarr,fname(2),dimnum(1:3),dimid,adate)
 outputdesc(1)='depth'
 outputdesc(2)='Bathymetry'
 outputdesc(3)='m'
-call ncaddvargen(ncidarr,outputdesc,5,2,varid,1.,0.)
+call ncaddvargen(ncidarr,outputdesc,5,2,varid(1),1.,0.)
+outputdesc(1)='riveracc'
+outputdesc(2)='River accumulation'
+outputdesc(3)='none'
+call ncaddvargen(ncidarr,outputdesc,5,2,varid(2),1.,0.)
 call ncatt(ncidarr,'lon0',lonlat(1))
 call ncatt(ncidarr,'lat0',lonlat(2))
 call ncatt(ncidarr,'schmidt',schmidt)
@@ -307,12 +319,15 @@ atime(1)=0.
 call nclonlatgen(ncidarr,dimid,alonlat,alvl,atime,dimnum)
 
 dimcount=(/ sibdim(1), sibdim(2), 1, 1 /)
-call ncwritedatgen(ncidarr,depth,dimcount,varid)
+call ncwritedatgen(ncidarr,depth,dimcount,varid(1))
+call ncwritedatgen(ncidarr,riveracc,dimcount,varid(2))
+
 call ncclose(ncidarr)
 
 deallocate(gridout,rlld,ocndata,topdata,lsdata,depth)
 deallocate(in,is,ie,iw)
-
+deallocate(riveracc)
+deallocate(dum)
+  
 Return
-End
-
+End subroutine
