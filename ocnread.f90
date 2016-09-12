@@ -467,7 +467,7 @@ domsize(7,2) = 8520
 domll(7,1) = -93.
 domll(7,2) = -32.
 domll(7,3) = -56.
-domll(7,4) = 12.
+domll(7,4) = 15.
 
 
 ! Must be compiled using 1 byte record lengths
@@ -664,7 +664,7 @@ domsize(7,2) = 8520
 domll(7,1) = -93.
 domll(7,2) = -32.
 domll(7,3) = -56.
-domll(7,4) = 12.
+domll(7,4) = 15.
 
 
 Write(6,*) "Read Hydroshed data (stream)"
