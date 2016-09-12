@@ -408,6 +408,7 @@ Integer, dimension(2), intent(in) :: lldim
 Real, dimension(lldim(1),lldim(2)), intent(out) :: coverout
 real rtmp, rlat, rlon
 integer, dimension(43200,nscale) :: databuffer
+integer(kind=4), dimension(43200) :: dataread
 integer(kind=4), dimension(43200) :: datatemp
 real, dimension(maxidom,4) :: domll
 Integer, dimension(2,2) :: jin,jout
@@ -501,7 +502,8 @@ Do ilat=1,lldim(2)
       if ( recpos_local>=1 .and. recpos_local<=domsize(idom,2) ) then
         posx_beg = nint( (domll(idom,1)+180.)*(43200./360.) + 0.5001 )
         posx_end = nint( (domll(idom,2)+180.)*(43200./360.) - 0.5001 )
-        Read(10+idom,REC=recpos_local) datatemp(posx_beg:posx_end)
+        Read(10+idom,REC=recpos_local) dataread(posx_beg:posx_end)
+        datatemp(posx_beg:posx_end) = max( datatemp(posx_beg:posx_end), dataread(posx_beg:posx_end) )
       end if
     end do
     
@@ -605,6 +607,7 @@ real rlat
 real, dimension(maxidom,4) :: domll
 Integer, dimension(sibdim(1),sibdim(2)), intent(out) :: countn
 integer(kind=4), dimension(43200) :: databuffer
+integer(kind=4), dimension(43200) :: dataread
 Integer ilat,ilon,lci,lcj,nface
 integer recpos_local, posx_beg, posx_end
 integer idom
@@ -692,7 +695,8 @@ Do ilat=1,21600
     rlat = 90. + -180.*real(ilat-1)/real(21600-1)
     recpos_local = 1 + nint( (rlat-domll(idom,4))/(domll(idom,3)-domll(idom,4))*real(domsize(idom,2)-1) )
     if ( recpos_local>=1 .and. recpos_local<=domsize(idom,2) ) then
-      Read(10+idom,REC=recpos_local) databuffer(posx_beg:posx_end)
+      Read(10+idom,REC=recpos_local) dataread(posx_beg:posx_end)
+      databuffer(posx_beg:posx_end) = max( databuffer(posx_beg:posx_end), dataread(posx_beg:posx_end) )
     end if
   end do
   aglat=callat(90.,ilat,1)
