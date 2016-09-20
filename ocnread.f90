@@ -474,9 +474,11 @@ domll(7,4) = 15.
 ! Must be compiled using 1 byte record lengths
 do idom = 1,maxidom
   if ( trim(riverdatapath)/='' ) then
-    Open(10+idom,FILE=trim(riverdatapath)//'/'//trim(domname(idom)),access='direct',form='unformatted',recl=domsize(idom,1)*4,convert='LITTLE_ENDIAN',status='old')
+    Open(10+idom,FILE=trim(riverdatapath)//'/'//trim(domname(idom)),access='direct',form='unformatted',recl=domsize(idom,1)*4, &
+         convert='LITTLE_ENDIAN',status='old')
   else
-    Open(10+idom,FILE=trim(domname(idom)),access='direct',form='unformatted',recl=domsize(idom,1)*4,convert='LITTLE_ENDIAN',status='old')  
+    Open(10+idom,FILE=trim(domname(idom)),access='direct',form='unformatted',recl=domsize(idom,1)*4,convert='LITTLE_ENDIAN', &
+         status='old')  
   end if
 end do
 
@@ -675,9 +677,11 @@ Write(6,*) "Read Hydroshed data (stream)"
 ! Must be compiled using 1 byte record lengths
 do idom = 1,maxidom
   if ( riverdatapath/='' ) then
-    Open(10+idom,FILE=trim(riverdatapath)//'/'//trim(domname(idom)),access='direct',form='unformatted',recl=domsize(idom,1)*4,convert='LITTLE_ENDIAN',status='old')
+    Open(10+idom,FILE=trim(riverdatapath)//'/'//trim(domname(idom)),access='direct',form='unformatted',recl=domsize(idom,1)*4, &
+         convert='LITTLE_ENDIAN',status='old')
   else
-    Open(10+idom,FILE=trim(domname(idom)),access='direct',form='unformatted',recl=domsize(idom,1)*4,convert='LITTLE_ENDIAN',status='old')  
+    Open(10+idom,FILE=trim(domname(idom)),access='direct',form='unformatted',recl=domsize(idom,1)*4,convert='LITTLE_ENDIAN', &
+         status='old')  
   end if
 end do
 
@@ -692,7 +696,7 @@ Do ilat=1,21600
   do idom = 1,maxidom
     posx_beg = 1 + nint( (domll(idom,1)+180.)/360.*real(43200-1) )
     posx_end = 1 + nint( (domll(idom,2)+180.)/360.*real(43200-1) )  
-    rlat = 90. + -180.*real(ilat-1)/real(21600-1)
+    rlat = 90. - 180.*real(ilat-1)/real(21600-1)
     recpos_local = 1 + nint( (rlat-domll(idom,4))/(domll(idom,3)-domll(idom,4))*real(domsize(idom,2)-1) )
     if ( recpos_local>=1 .and. recpos_local<=domsize(idom,2) ) then
       Read(10+idom,REC=recpos_local) dataread(posx_beg:posx_end)
