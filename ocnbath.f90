@@ -27,9 +27,9 @@ implicit None
 
 include 'version.h'
 
-character*80, dimension(:,:), allocatable :: options
-character*130, dimension(4) :: fname
-character*130 topofile,bathout,bathdatafile,riverdatapath
+character*1024, dimension(:,:), allocatable :: options
+character*1024, dimension(4) :: fname
+character*1024 topofile,bathout,bathdatafile,riverdatapath
 integer :: binlimit = 4
 integer nopts
 logical :: fastocn = .true.
@@ -223,7 +223,7 @@ real schmidt,dsx,ds
 character(len=*), dimension(1:nopts,1:2), intent(in) :: options
 character(len=*), dimension(1:4), intent(in) :: fname
 character*80, dimension(1:3) :: outputdesc
-character*80 returnoption,csize
+character*1024 returnoption,csize
 character*45 header
 character*10 formout
 logical, intent(in) :: fastocn, bathfilt
