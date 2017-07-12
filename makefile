@@ -48,7 +48,7 @@ FORCE:
 %.o : %.mod
 
 ocnbath.o : ccinterp.o version.h
-ocnread.o : ccinterp.o
+ocnread.o : ccinterp.o netcdf_m.o
 ccinterp.o : ccinterp.f90 setxyz_m.o xyzinfo_m.o latltoij_m.o newmpar_m.o precis_m.o
 latltoij_m.o : latltoij_m.f90 xyzinfo_m.o newmpar_m.o precis_m.o
 setxyz_m.o : setxyz_m.f90 newmpar_m.o indices_m.o parm_m.o precis_m.o ind_m.o xyzinfo_m.o jimco_m.o jimcc_m.o 
