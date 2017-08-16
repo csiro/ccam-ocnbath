@@ -1,7 +1,7 @@
 
 ifneq ($(CUSTOM),yes)
 FC = ifort
-XFLAGS = -O -assume byterecl -fp-model precise -traceback
+XFLAGS = -xHost -assume byterecl -fp-model precise -traceback
 LIBS = -L $(NETCDF_ROOT)/lib -lnetcdf -lnetcdff
 INC = -I $(NETCDF_ROOT)/include
 PPFLAG90 = -fpp
@@ -13,6 +13,14 @@ FC = gfortran
 XFLAGS = -O2 -mtune=native -march=native -I $(NETCDF_ROOT)/include
 PPFLAG90 = -x f95-cpp-input
 PPFLAG77 = -x f77-cpp-input
+endif
+
+ifeq ($(CRAY),yes)
+FC = ftn
+XFLAGS = -h noomp
+PPFLAG90 = -eZ
+PPFLAG77 = -eZ
+DEBUGFLAG =
 endif
 
 OBJT = ocnbath.o ocnread.o readswitch.o ccinterp.o\
