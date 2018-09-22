@@ -1,6 +1,6 @@
 ! Conformal Cubic Atmospheric Model
     
-! Copyright 2015-2016 Commonwealth Scientific Industrial Research Organisation (CSIRO)
+! Copyright 2015-2018 Commonwealth Scientific Industrial Research Organisation (CSIRO)
     
 ! This file is part of the Conformal Cubic Atmospheric Model (CCAM)
 !
@@ -210,7 +210,7 @@ integer, dimension(0:4) :: ncidarr
 integer, dimension(:,:), allocatable :: in,ie,is,iw
 integer sibsize,tunit,i,j,k,ierr
 integer inx,iny,isx,isy,iex,iey,iwx,iwy
-integer nfilt
+integer nfilt,dum_count
 integer, parameter :: nfiltmax = 1
 real, dimension(:,:,:), allocatable :: rlld
 real, dimension(:,:), allocatable :: gridout,lsdata,ocndata,topdata,depth,dum
@@ -220,6 +220,7 @@ real, dimension(2) :: lonlat
 real, dimension(1) :: alvl
 real, dimension(1) :: atime
 real schmidt,dsx,ds
+real rmax,lmax,dum_sum,dum_ave
 character(len=*), dimension(1:nopts,1:2), intent(in) :: options
 character(len=*), dimension(1:4), intent(in) :: fname
 character*80, dimension(1:3) :: outputdesc
@@ -269,24 +270,74 @@ end where
 
 ! Filter bathymetry
 if (bathfilt) then
-  do nfilt=1,nfiltmax
-    dum=depth
-    do j=1,sibdim(2)
-      do i=1,sibdim(1)
-        iny=(in(i,j)-1)/sibdim(1)+1
-        inx=in(i,j)-(iny-1)*sibdim(1)
-        isy=(is(i,j)-1)/sibdim(1)+1
-        isx=is(i,j)-(isy-1)*sibdim(1)
-        iey=(ie(i,j)-1)/sibdim(1)+1
-        iex=ie(i,j)-(iey-1)*sibdim(1)
-        iwy=(iw(i,j)-1)/sibdim(1)+1
-        iwx=iw(i,j)-(iwy-1)*sibdim(1)
-        if (dum(i,j)>0.01) then
-          depth(i,j)=0.125*(dum(inx,iny)+dum(isx,isy)+dum(iex,iey)+dum(iwx,iwy))+0.5*dum(i,j)
-        end if
+
+  rmax = 1.
+  do while ( rmax>0.2 )
+
+    do nfilt=1,nfiltmax
+      dum=depth
+      do j=1,sibdim(2)
+        do i=1,sibdim(1)
+          iny=(in(i,j)-1)/sibdim(1)+1
+          inx=in(i,j)-(iny-1)*sibdim(1)
+          isy=(is(i,j)-1)/sibdim(1)+1
+          isx=is(i,j)-(isy-1)*sibdim(1)
+          iey=(ie(i,j)-1)/sibdim(1)+1
+          iex=ie(i,j)-(iey-1)*sibdim(1)
+          iwy=(iw(i,j)-1)/sibdim(1)+1
+          iwx=iw(i,j)-(iwy-1)*sibdim(1)
+          if (dum(i,j)>0.01) then
+            dum_sum = 0.
+            dum_count = 0
+            if ( dum(inx,iny)>0.01 ) then
+              dum_sum = dum_sum + dum(inx,iny)
+              dum_count = dum_count + 1
+            end if
+            if ( dum(isx,isy)>0.01 ) then
+              dum_sum = dum_sum + dum(isx,isy)
+              dum_count = dum_count + 1
+            end if
+            if ( dum(iex,iey)>0.01 ) then
+              dum_sum = dum_sum + dum(iex,iey)
+              dum_count = dum_count + 1
+            end if
+            if ( dum(iwx,iwy)>0.01 ) then
+              dum_sum = dum_sum + dum(iwx,iwy)
+              dum_count = dum_count + 1
+            end if
+            if ( dum_count>0 ) then
+              dum_ave = dum_sum/real(dum_count)
+              depth(i,j)=0.5*dum_ave+0.5*dum(i,j)
+            end if  
+          end if
+        end do
       end do
     end do
+
+    ! check r factor
+    rmax = 0.
+    do j = 1,sibdim(2)
+      do i = 1,sibdim(1)
+        if ( depth(i,j)>0.01 ) then  
+          iny=(in(i,j)-1)/sibdim(1)+1
+          inx=in(i,j)-(iny-1)*sibdim(1)
+          iey=(ie(i,j)-1)/sibdim(1)+1
+          iex=ie(i,j)-(iey-1)*sibdim(1)
+          if ( depth(inx,iny)>0.01 .and. depth(iex,iey)>0.01 ) then
+            lmax = max( abs(depth(inx,iny)-depth(i,j))/(depth(inx,iny)+depth(i,j)), abs(depth(iex,iey)-depth(i,j))/(depth(iex,iey)+depth(i,j)) )
+            rmax = max( rmax, lmax )
+            !if ( lmax>0.2 ) then
+            !  write(6,*) "Exceed rmax = ",lmax
+            !  write(6,*) "depth(n),depth(e),depth ",depth(inx,iny),depth(iex,iey),depth(i,j)
+            !end if
+          end if  
+        end if  
+      end do
+    end do
+    write(6,*) "rmax = ",rmax
+
   end do
+  
 end if
 
 ! calculate river routing directions
