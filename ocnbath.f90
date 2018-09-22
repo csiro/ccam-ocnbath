@@ -32,10 +32,12 @@ character*1024, dimension(4) :: fname
 character*1024 topofile,bathout,bathdatafile,riverdatapath
 integer :: binlimit = 4
 integer nopts
+real rtest
 logical :: fastocn = .true.
 logical :: bathfilt = .false.
 
-namelist/ocnnml/ topofile,bathout,fastocn,binlimit,bathfilt,bathdatafile,riverdatapath
+namelist/ocnnml/ topofile,bathout,fastocn,binlimit,bathfilt,bathdatafile,riverdatapath, &
+                 rtest
 
 ! Start banner
 write(6,*) "=============================================================================="
@@ -62,6 +64,7 @@ call defaults(options,nopts)
 
 bathdatafile="etopo1_ice_c.flt"
 riverdatapath=""
+rtest=0.2
 
 ! Read namelist
 write(6,*) 'Input &ocnnml namelist'
@@ -74,7 +77,7 @@ fname(2)=bathout
 fname(3)=bathdatafile
 fname(4)=riverdatapath
 
-call createocn(options,nopts,fname,fastocn,bathfilt,binlimit)
+call createocn(options,nopts,fname,fastocn,bathfilt,binlimit,rtest)
 
 deallocate(options)
 
@@ -127,6 +130,7 @@ Write(6,*) '    riverdatapath=""'
 Write(6,*) '    fastocn=t'
 Write(6,*) '    bathfilt=t'
 Write(6,*) '    binlimit=4'
+Write(6,*) '    rtest=0.2'
 Write(6,*) '  &end'
 Write(6,*)
 Write(6,*) '  where:'
@@ -140,6 +144,8 @@ Write(6,*) '    binlimit      = The minimum ratio between the grid'
 Write(6,*) '                    length scale and the length scale of'
 Write(6,*) '                    the aggregated ETOPO data (see notes'
 Write(6,*) '                    below).'
+Write(6,*) '    rtest         = Controls smoothing of bathymetry.'
+Write(6,*) '                    rtest=0.2 is recommended'
 Write(6,*)
 Write(6,*) 'NOTES: fastocn mode will speed up the code by aggregating'
 Write(6,*) '       ETOPO data at a coarser resolution before'
@@ -195,7 +201,7 @@ end
 ! This subroutine processes the sib data
 !
 
-subroutine createocn(options,nopts,fname,fastocn,bathfilt,binlimit)
+subroutine createocn(options,nopts,fname,fastocn,bathfilt,binlimit,rtest)
 
 use ccinterp
 
@@ -219,6 +225,7 @@ real, dimension(3,2) :: alonlat
 real, dimension(2) :: lonlat
 real, dimension(1) :: alvl
 real, dimension(1) :: atime
+real, intent(in) :: rtest
 real schmidt,dsx,ds
 real rmax,lmax,dum_sum,dum_ave
 character(len=*), dimension(1:nopts,1:2), intent(in) :: options
@@ -272,7 +279,7 @@ end where
 if (bathfilt) then
 
   rmax = 1.
-  do while ( rmax>0.2 )
+  do while ( rmax>rtest )
 
     do nfilt=1,nfiltmax
       dum=depth
@@ -326,7 +333,7 @@ if (bathfilt) then
           if ( depth(inx,iny)>0.01 .and. depth(iex,iey)>0.01 ) then
             lmax = max( abs(depth(inx,iny)-depth(i,j))/(depth(inx,iny)+depth(i,j)), abs(depth(iex,iey)-depth(i,j))/(depth(iex,iey)+depth(i,j)) )
             rmax = max( rmax, lmax )
-            !if ( lmax>0.2 ) then
+            !if ( lmax>rtest ) then
             !  write(6,*) "Exceed rmax = ",lmax
             !  write(6,*) "depth(n),depth(e),depth ",depth(inx,iny),depth(iex,iey),depth(i,j)
             !end if
