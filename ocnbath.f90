@@ -64,7 +64,7 @@ call defaults(options,nopts)
 
 bathdatafile="etopo1_ice_c.flt"
 riverdatapath=""
-rtest=0.2
+rtest=1.
 
 ! Read namelist
 write(6,*) 'Input &ocnnml namelist'
@@ -216,7 +216,7 @@ integer, dimension(0:4) :: ncidarr
 integer, dimension(:,:), allocatable :: in,ie,is,iw
 integer sibsize,tunit,i,j,k,ierr
 integer inx,iny,isx,isy,iex,iey,iwx,iwy
-integer nfilt,dum_count
+integer nfilt,dum_count,filter_count
 integer, parameter :: nfiltmax = 1
 real, dimension(:,:,:), allocatable :: rlld
 real, dimension(:,:), allocatable :: gridout,lsdata,ocndata,topdata,depth,dum
@@ -227,7 +227,7 @@ real, dimension(1) :: alvl
 real, dimension(1) :: atime
 real, intent(in) :: rtest
 real schmidt,dsx,ds
-real rmax,lmax,dum_sum,dum_ave
+real rmax,lmax,dum_sum,dum_ave,vol_old,vol_new
 character(len=*), dimension(1:nopts,1:2), intent(in) :: options
 character(len=*), dimension(1:4), intent(in) :: fname
 character*80, dimension(1:3) :: outputdesc
@@ -278,71 +278,158 @@ end where
 ! Filter bathymetry
 if (bathfilt) then
 
-  rmax = 1.
-  do while ( rmax>rtest )
-
-    do nfilt=1,nfiltmax
-      dum=depth
-      do j=1,sibdim(2)
-        do i=1,sibdim(1)
-          iny=(in(i,j)-1)/sibdim(1)+1
-          inx=in(i,j)-(iny-1)*sibdim(1)
-          isy=(is(i,j)-1)/sibdim(1)+1
-          isx=is(i,j)-(isy-1)*sibdim(1)
-          iey=(ie(i,j)-1)/sibdim(1)+1
-          iex=ie(i,j)-(iey-1)*sibdim(1)
-          iwy=(iw(i,j)-1)/sibdim(1)+1
-          iwx=iw(i,j)-(iwy-1)*sibdim(1)
-          if (dum(i,j)>0.01) then
-            dum_sum = 0.
-            dum_count = 0
-            if ( dum(inx,iny)>0.01 ) then
-              dum_sum = dum_sum + dum(inx,iny)
-              dum_count = dum_count + 1
-            end if
-            if ( dum(isx,isy)>0.01 ) then
-              dum_sum = dum_sum + dum(isx,isy)
-              dum_count = dum_count + 1
-            end if
-            if ( dum(iex,iey)>0.01 ) then
-              dum_sum = dum_sum + dum(iex,iey)
-              dum_count = dum_count + 1
-            end if
-            if ( dum(iwx,iwy)>0.01 ) then
-              dum_sum = dum_sum + dum(iwx,iwy)
-              dum_count = dum_count + 1
-            end if
-            if ( dum_count>0 ) then
-              dum_ave = dum_sum/real(dum_count)
-              depth(i,j)=0.5*dum_ave+0.5*dum(i,j)
-            end if  
+  ! Gaussian filter
+  do nfilt=1,nfiltmax
+    dum=depth
+    do j=1,sibdim(2)
+      do i=1,sibdim(1)
+        iny=(in(i,j)-1)/sibdim(1)+1
+        inx=in(i,j)-(iny-1)*sibdim(1)
+        isy=(is(i,j)-1)/sibdim(1)+1
+        isx=is(i,j)-(isy-1)*sibdim(1)
+        iey=(ie(i,j)-1)/sibdim(1)+1
+        iex=ie(i,j)-(iey-1)*sibdim(1)
+        iwy=(iw(i,j)-1)/sibdim(1)+1
+        iwx=iw(i,j)-(iwy-1)*sibdim(1)
+        if (dum(i,j)>0.01) then
+          dum_sum = 0.
+          dum_count = 0
+          if ( dum(inx,iny)>0.01 ) then
+            dum_sum = dum_sum + dum(inx,iny)
+            dum_count = dum_count + 1
           end if
-        end do
+          if ( dum(isx,isy)>0.01 ) then
+            dum_sum = dum_sum + dum(isx,isy)
+            dum_count = dum_count + 1
+          end if
+          if ( dum(iex,iey)>0.01 ) then
+            dum_sum = dum_sum + dum(iex,iey)
+            dum_count = dum_count + 1
+          end if
+          if ( dum(iwx,iwy)>0.01 ) then
+            dum_sum = dum_sum + dum(iwx,iwy)
+            dum_count = dum_count + 1
+          end if
+          if ( dum_count>0 ) then
+            dum_ave = dum_sum/real(dum_count)
+            depth(i,j)=0.5*dum_ave+0.5*dum(i,j)
+          end if  
+        end if
       end do
     end do
+  end do    
 
-    ! check r factor
-    rmax = 0.
+  ! Calculate original volume
+  vol_old = 0.
+  do j = 1,sibdim(2)
+    do i = 1,sibdim(1)
+      if ( depth(i,j)>0.01 ) then  
+        vol_old = vol_old + depth(i,j)*gridout(i,j)
+      end if  
+    end do
+  end do
+  
+  ! Martinho and Batteen (2006)
+  rmax = 1.
+  filter_count = 0
+  do while ( rmax>rtest )
+      
+    rmax = 0.  
+    
+    ! N direction
+    dum = depth
     do j = 1,sibdim(2)
       do i = 1,sibdim(1)
-        if ( depth(i,j)>0.01 ) then  
+        if ( dum(i,j)>0.01 ) then  
           iny=(in(i,j)-1)/sibdim(1)+1
           inx=in(i,j)-(iny-1)*sibdim(1)
+          if ( dum(inx,iny)>0.01 ) then
+            lmax = (dum(i,j)-dum(inx,iny))/(dum(inx,iny)+dum(i,j))
+            rmax = max( rmax, lmax )
+            if ( lmax>rtest ) then
+              depth(inx,iny) = max((1.-rtest*0.99)/(1.+rtest*0.99)*dum(i,j), 1.)
+            end if
+          end if
+        end if
+      end do
+    end do  
+
+    ! E direction
+    dum = depth
+    do j = 1,sibdim(2)
+      do i = 1,sibdim(1)
+        if ( dum(i,j)>0.01 ) then  
           iey=(ie(i,j)-1)/sibdim(1)+1
           iex=ie(i,j)-(iey-1)*sibdim(1)
-          if ( depth(inx,iny)>0.01 .and. depth(iex,iey)>0.01 ) then
-            lmax = max( abs(depth(inx,iny)-depth(i,j))/(depth(inx,iny)+depth(i,j)), abs(depth(iex,iey)-depth(i,j))/(depth(iex,iey)+depth(i,j)) )
+          if ( dum(iex,iey)>0.01 ) then
+            lmax = (dum(i,j)-dum(iex,iey))/(dum(iex,iey)+dum(i,j))
             rmax = max( rmax, lmax )
-            !if ( lmax>rtest ) then
-            !  write(6,*) "Exceed rmax = ",lmax
-            !  write(6,*) "depth(n),depth(e),depth ",depth(inx,iny),depth(iex,iey),depth(i,j)
-            !end if
-          end if  
-        end if  
+            if ( lmax>rtest ) then
+              depth(iex,iey) = max((1.-rtest*0.99)/(1.+rtest*0.99)*dum(i,j), 1.)
+            end if
+          end if
+        end if
+      end do
+    end do  
+    
+    ! S direction
+    dum = depth
+    do j = 1,sibdim(2)
+      do i = 1,sibdim(1)
+        if ( dum(i,j)>0.01 ) then  
+          isy=(is(i,j)-1)/sibdim(1)+1
+          isx=is(i,j)-(isy-1)*sibdim(1)
+          if ( dum(isx,isy)>0.01 ) then
+            lmax = (dum(i,j)-dum(isx,isy))/(dum(isx,isy)+dum(i,j))
+            rmax = max( rmax, lmax )
+            if ( lmax>rtest ) then
+              depth(isx,isy) = max((1.-rtest*0.99)/(1.+rtest*0.99)*dum(i,j), 1.)
+            end if
+          end if
+        end if
+      end do
+    end do  
+ 
+    ! W direction
+    dum = depth
+    do j = 1,sibdim(2)
+      do i = 1,sibdim(1)
+        if ( dum(i,j)>0.01 ) then  
+          iwy=(iw(i,j)-1)/sibdim(1)+1
+          iwx=iw(i,j)-(iwy-1)*sibdim(1)
+          if ( dum(iwx,iwy)>0.01 ) then
+            lmax = (dum(i,j)-dum(iwx,iwy))/(dum(iwx,iwy)+dum(i,j))
+            rmax = max( rmax, lmax )
+            if ( lmax>rtest ) then
+              depth(iwx,iwy) = max((1.-rtest*0.99)/(1.+rtest*0.99)*dum(i,j), 1.)
+            end if
+          end if
+        end if
       end do
     end do
-    write(6,*) "rmax = ",rmax
+    
+    filter_count = filter_count + 1
+    write(6,*) "rmax,filter_count = ",rmax,filter_count
 
+  end do
+  
+  ! update volume
+  vol_new = 0.
+  do j = 1,sibdim(2)
+    do i = 1,sibdim(1)
+      if ( depth(i,j)>0.01 ) then  
+        vol_new = vol_new + depth(i,j)*gridout(i,j)
+      end if  
+    end do
+  end do
+  write(6,*) "vol_old,vol_new,ratio ",vol_old,vol_new,vol_old/vol_new
+  
+  do j = 1,sibdim(2)
+    do i = 1,sibdim(1)
+      if ( depth(i,j)>0.01 ) then  
+        depth(i,j) = vol_old/vol_new*depth(i,j)
+      end if  
+    end do
   end do
   
 end if
