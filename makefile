@@ -2,7 +2,10 @@
 ifneq ($(CUSTOM),yes)
 FC = ifort
 XFLAGS = -xHost -assume byterecl -fp-model precise -traceback
-LIBS = -L $(NETCDF_ROOT)/lib -lnetcdf -lnetcdff
+LIBS = -L $(NETCDF_ROOT)/lib -lnetcdf
+ifneq ($(NCCLIB),yes)
+LIBS += -lnetcdff
+endif
 INC = -I $(NETCDF_ROOT)/include
 PPFLAG90 = -fpp
 PPFLAG77 = -fpp
@@ -22,6 +25,11 @@ PPFLAG90 = -eZ
 PPFLAG77 = -eZ
 DEBUGFLAG =
 endif
+
+ifeq ($(NCCLIB),yes)
+XFLAGS += -Dncclib
+endif
+
 
 OBJT = ocnbath.o ocnread.o readswitch.o ccinterp.o\
        latltoij_m.o setxyz_m.o xyzinfo_m.o newmpar_m.o \
