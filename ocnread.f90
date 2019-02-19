@@ -1,6 +1,6 @@
 ! Conformal Cubic Atmospheric Model
     
-! Copyright 2015-2016 Commonwealth Scientific Industrial Research Organisation (CSIRO)
+! Copyright 2015-2019 Commonwealth Scientific Industrial Research Organisation (CSIRO)
     
 ! This file is part of the Conformal Cubic Atmospheric Model (CCAM)
 !
@@ -139,7 +139,7 @@ If (fastocn) then
 	  
             select case(datatype)
               case('bath')
-	            Call kmconvert(nscale,nscale_x,lldim,lldim_x,2)
+                Call kmconvert(nscale,nscale_x,lldim,lldim_x,2)
                 Call ocnread(latlon,nscale_x,lldim_x,coverout,bathdatafile)
               case('river')
                 call riverread(latlon,nscale,lldim,coverout,bathdatafile)
@@ -159,7 +159,7 @@ If (fastocn) then
                   lci = nint(alci)
                   lcj = nint(alcj)
                   lcj = lcj+nface*sibdim(1)
-                  If (grid(lci,lcj).GE.real(minscale)) then
+                  If (grid(lci,lcj).GE.real(minscale) .or. nscale==scalelimit ) then
                     dataout(lci,lcj)=max(dataout(lci,lcj),coverout(i,j))
                     countn(lci,lcj)=1
                   End if
@@ -274,10 +274,33 @@ If (subsec.NE.0) then
         if ( datatype=='river' ) then
           Do lcj=1,sibdim(2)
             Do lci=1,sibdim(1)
-              If (countn(lci,lcj)==0) then
-                ! unassigned
-                dataout(lci,lcj)=0
-                countn(lci,lcj)=1
+              If (countn(lci,lcj)==0 ) then
+                aglon=rlld(lci,lcj,1)
+                aglat=rlld(lci,lcj,2)
+                serlon=indexlon(aglon,latlon(1),nscale)
+                serlat=indexlat(aglat,latlon(2),nscale)
+                i=nint(serlon)
+                j=nint(serlat)
+                if (i>0.and.i<=lldim(1).and.j>0.and.j<=lldim(2)) then
+                  ! fill
+                  !dataout(lci,lcj)=coverout(i,j)
+                  !countn(lci,lcj)=1
+                  ! interpolate
+                  serlon = serlon - real(i)
+                  serlat = serlat - real(j)                  
+                  iadj = nint(sign(1.,serlon))
+                  jadj = nint(sign(1.,serlat))
+                  serlon = abs(serlon)
+                  serlat = abs(serlat)
+                  iadj = max(min(i+iadj,lldim(1)),1)
+                  jadj = max(min(j+jadj,lldim(2)),1)
+                  rdat(1,1) = coverout(i,   j   )
+                  rdat(2,1) = coverout(iadj,j   )
+                  rdat(1,2) = coverout(i,   jadj)
+                  rdat(2,2) = coverout(iadj,jadj)
+                  dataout(lci,lcj) = ipol(rdat,serlon,serlat)
+                  countn(lci,lcj) = 1
+                end if    
               End If
             End Do
           End Do
@@ -558,7 +581,7 @@ Do ilat=1,lldim(2)
   Do jlat=1,nscale
     recpos=llint(2)+jlat
     
-    datatemp(:) = 0
+    datatemp(:) = 0 ! missing
     do idom = 1,maxidom
       rlat = 90. + (real(recpos)-0.5)*(-180./21600.)
       recpos_local = nint( 0.5 + (rlat-domll(idom,4))*(real(domsize(idom,2))/(domll(idom,3)-domll(idom,4))) )
