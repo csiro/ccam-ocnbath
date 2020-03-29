@@ -1,6 +1,6 @@
 ! Conformal Cubic Atmospheric Model
     
-! Copyright 2015-2018 Commonwealth Scientific Industrial Research Organisation (CSIRO)
+! Copyright 2015-2020 Commonwealth Scientific Industrial Research Organisation (CSIRO)
     
 ! This file is part of the Conformal Cubic Atmospheric Model (CCAM)
 !
@@ -145,7 +145,7 @@ Write(6,*) '                    length scale and the length scale of'
 Write(6,*) '                    the aggregated ETOPO data (see notes'
 Write(6,*) '                    below).'
 Write(6,*) '    rtest         = Controls smoothing of bathymetry.'
-Write(6,*) '                    rtest=0.2 is recommended'
+Write(6,*) '                    rtest=1. disables smoothing'
 Write(6,*)
 Write(6,*) 'NOTES: fastocn mode will speed up the code by aggregating'
 Write(6,*) '       ETOPO data at a coarser resolution before'
@@ -257,7 +257,6 @@ allocate(lsdata(sibdim(1),sibdim(2)),depth(sibdim(1),sibdim(2)))
 allocate(in(sibdim(1),sibdim(2)),ie(sibdim(1),sibdim(2)))
 allocate(is(sibdim(1),sibdim(2)),iw(sibdim(1),sibdim(2)))
 allocate(riveracc(sibdim(1),sibdim(2)))
-allocate(dum(sibdim(1),sibdim(2)))
 
 Call gettopohgt(tunit,fname(1),topdata,lsdata,sibdim)
 lsdata = 1. - lsdata
@@ -275,9 +274,13 @@ elsewhere
   depth = 0.
 end where
 
+deallocate(topdata,ocndata,lsdata)
+
 ! Filter bathymetry
 if (bathfilt) then
 
+  allocate(dum(sibdim(1),sibdim(2)))  
+    
   ! Gaussian filter
   do nfilt=1,nfiltmax
     dum=depth
@@ -432,10 +435,16 @@ if (bathfilt) then
     end do
   end do
   
+  deallocate(dum)
+  
 end if
+
+deallocate(in,is,ie,iw)
 
 ! calculate river routing directions
 call getdata(riveracc,lonlat,gridout,rlld,sibdim,sibsize,fastocn,binlimit,fname(4),'river')
+
+deallocate(gridout,rlld)
 
 ! Prep netcdf output
 Write(6,*) 'Write depth data'
@@ -469,10 +478,7 @@ call ncwritedatgen(ncidarr,riveracc,dimcount,varid(2))
 
 call ncclose(ncidarr)
 
-deallocate(gridout,rlld,ocndata,topdata,lsdata,depth)
-deallocate(in,is,ie,iw)
-deallocate(riveracc)
-deallocate(dum)
-  
+deallocate(depth,riveracc)
+
 Return
 End subroutine

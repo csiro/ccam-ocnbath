@@ -1,6 +1,6 @@
 ! Conformal Cubic Atmospheric Model
     
-! Copyright 2015-2019 Commonwealth Scientific Industrial Research Organisation (CSIRO)
+! Copyright 2015-2020 Commonwealth Scientific Industrial Research Organisation (CSIRO)
     
 ! This file is part of the Conformal Cubic Atmospheric Model (CCAM)
 !
@@ -25,6 +25,7 @@
 Subroutine getdata(dataout,glonlat,grid,tlld,sibdim,sibsize,fastocn,binlimit,bathdatafile,datatype)
 
 Use ccinterp
+use netcdf_m
 
 Implicit None
 
@@ -36,6 +37,9 @@ Integer nscale,nscale_x,nface,subsec,mode,tmp
 Integer i,j,k,lci,lcj,nx,ny,netcount
 Integer basesize,scalelimit,minscale
 Integer iadj,jadj
+integer idom, ierr
+integer, dimension(7) :: ncid, varid
+integer, dimension(7,2) :: domsize
 Real, dimension(sibdim(1),sibdim(2)), intent(out) :: dataout
 Real, dimension(sibdim(1),sibdim(2)), intent(in) :: grid
 Real, dimension(sibdim(1),sibdim(2),2), intent(in) :: tlld
@@ -46,12 +50,15 @@ Real, dimension(:,:), allocatable :: coverout
 Real, dimension(2) :: latlon
 Real, dimension(2,2) :: sll
 Real, dimension(2,2) :: rdat
+real, dimension(7,4) :: domll
 Real aglon,aglat,alci,alcj,serlon,serlat,slonn,slatx,elon,elat,tscale,baselon
 Real ipol,callon,callat,indexlon,indexlat
 Logical, intent(in) :: fastocn
 Logical, dimension(:,:), allocatable :: sermask
 logical, dimension(sibdim(1),sibdim(2)) :: ctest
+logical, dimension(7) :: ncfile
 character(len=*), intent(in) :: bathdatafile, datatype
+character(len=20), dimension(7) :: domname
 
 dataout=0.
 countn=0
@@ -72,13 +79,121 @@ Do While (Any(rlld(:,:,1).GT.(baselon+360.)))
   End where
 End do
 
+! River file names
+domname(1) = "af_acc_30s.bil"
+domsize(1,1) = 8880
+domsize(1,2) = 8760
+domll(1,1) = -19.
+domll(1,2) = 55.
+domll(1,3) = -35.
+domll(1,4) = 38.
+domname(2) = "as_acc_30s.bil"
+domsize(2,1) = 14760
+domsize(2,2) = 8760
+domll(2,1) = 57.
+domll(2,2) = 180.
+domll(2,3) = -12.
+domll(2,4) = 61.
+domname(3) = "au_acc_30s.bil"
+domsize(3,1) = 8160
+domsize(3,2) = 5520
+domll(3,1) = 112.
+domll(3,2) = 180.
+domll(3,3) = -56.
+domll(3,4) = -10.
+domname(4) = "ca_acc_30s.bil"
+domsize(4,1) = 7080
+domsize(4,2) = 4080
+domll(4,1) = -119.
+domll(4,2) = -60.
+domll(4,3) = 5.
+domll(4,4) = 39.
+domname(5) = "eu_acc_30s.bil"
+domsize(5,1) = 10080
+domsize(5,2) = 6000
+domll(5,1) = -14.
+domll(5,2) = 70.
+domll(5,3) = 12.
+domll(5,4) = 62.
+domname(6) = "na_acc_30s.bil"
+domsize(6,1) = 10320
+domsize(6,2) = 4440
+domll(6,1) = -138.
+domll(6,2) = -52.
+domll(6,3) = 24.
+domll(6,4) = 61.
+domname(7) = "sa_acc_30s.bil"
+domsize(7,1) = 7320
+domsize(7,2) = 8520
+domll(7,1) = -93.
+domll(7,2) = -32.
+domll(7,3) = -56.
+domll(7,4) = 15.
+
 select case(datatype)
   case('bath')
     Write(6,*) 'Process ETOPO1 dataset'
     scalelimit=2
+    ierr = nf90_open(trim(bathdatafile)//'.nc',nf90_nowrite,ncid(0))
+    if ( ierr==nf90_noerr ) then
+      ncfile(0) = .true.
+      write(6,*) "Found netcdf version ",trim(bathdatafile)
+      ierr = nf90_inq_varid(ncid(0),"bath",varid(0))
+    else  
+      ierr = nf90_open(trim(bathdatafile),nf90_nowrite,ncid(0))
+      if ( ierr==nf90_noerr ) then
+        ncfile(0) = .true.
+        write(6,*) "Found netcdf version ",trim(bathdatafile)
+        ierr = nf90_inq_varid(ncid(0),"bath",varid(0))    
+      else
+        ncfile(0) = .false.
+        ! Must be compiled using 1 byte record lengths
+        Open(10,FILE=bathdatafile,ACCESS='DIRECT',FORM='UNFORMATTED',RECL=86400,CONVERT='LITTLE_ENDIAN',STATUS='OLD')
+      end if
+    end if
   case('river')
     write(6,*) 'Process Hydrosheds dataset'
     scalelimit=1
+    do idom = 1,7
+      if ( trim(bathdatafile)/='' ) then
+        ierr = nf90_open(trim(bathdatafile)//'/'//trim(domname(idom))//'.nc',nf90_nowrite,ncid(idom))
+        if ( ierr==nf90_noerr ) then
+          ncfile(idom) = .true.
+          write(6,*) "Found netcdf version ",trim(domname(idom))
+          ierr = nf90_inq_varid(ncid(idom),"riveracc",varid(idom))
+        else  
+          ierr = nf90_open(trim(bathdatafile)//'/'//trim(domname(idom)),nf90_nowrite,ncid(idom))
+          if ( ierr==nf90_noerr ) then
+            ncfile(idom) = .true.
+            write(6,*) "Found netcdf version ",trim(domname(idom))
+            ierr = nf90_inq_varid(ncid(idom),"riveracc",varid(idom))    
+          else
+            ncfile(idom) = .false.   
+            ! Must be compiled using 1 byte record lengths
+            Open(10+idom,FILE=trim(bathdatafile)//'/'//trim(domname(idom)),access='direct',form='unformatted', &
+                recl=domsize(idom,1)*4,convert='LITTLE_ENDIAN',status='old')
+          end if
+        end if  
+      else
+        ierr = nf90_open(trim(domname(idom))//'.nc',nf90_nowrite,ncid(idom))
+        if ( ierr==nf90_noerr ) then
+          ncfile(idom) = .true.
+          write(6,*) "Found netcdf version ",trim(domname(idom))
+          ierr = nf90_inq_varid(ncid(idom),"riveracc",varid(idom))
+        else  
+          ierr = nf90_open(trim(domname(idom)),nf90_nowrite,ncid(idom))
+          if ( ierr==nf90_noerr ) then
+            ncfile(idom) = .true.
+            write(6,*) "Found netcdf version ",trim(domname(idom))
+            ierr = nf90_inq_varid(ncid(idom),"riveracc",varid(idom))    
+          else
+            ncfile(idom) = .false.  
+            Open(10+idom,FILE=trim(domname(idom)),access='direct',form='unformatted',recl=domsize(idom,1)*4, &
+                convert='LITTLE_ENDIAN',status='old')  
+          end if
+        end if  
+      end if
+    end do
   case default
     write(6,*) "ERROR: Unknown dataset ",trim(datatype)
     call finishbanner
@@ -140,9 +255,9 @@ If (fastocn) then
             select case(datatype)
               case('bath')
                 Call kmconvert(nscale,nscale_x,lldim,lldim_x,2)
-                Call ocnread(latlon,nscale_x,lldim_x,coverout,bathdatafile)
+                Call ocnread(latlon,nscale_x,lldim_x,coverout,bathdatafile,ncid(0),varid(0),ncfile(0))
               case('river')
-                call riverread(latlon,nscale,lldim,coverout,bathdatafile)
+                call riverread(latlon,nscale,lldim,coverout,bathdatafile,ncid,varid,ncfile,domname,domsize,domll)
               case default
                 Write(6,*) 'ERROR: Cannot find data ',trim(datatype)
                 call finishbanner
@@ -202,9 +317,9 @@ Else
 
   select case(datatype)
     case('bath')
-      Call ocnstream(sibdim,dataout,countn,bathdatafile)
+      Call ocnstream(sibdim,dataout,countn,bathdatafile,ncid(0),varid(0),ncfile(0))
     case('river')
-      call riverstream(sibdim,dataout,countn,bathdatafile)
+      call riverstream(sibdim,dataout,countn,bathdatafile,ncid,varid,ncfile,domname,domsize,domll)
     Case DEFAULT
       Write(6,*) 'ERROR: Cannot find data ',trim(datatype)
       call finishbanner
@@ -262,9 +377,9 @@ If (subsec.NE.0) then
         select case(datatype)
           case('bath')
             Call kmconvert(nscale,nscale_x,lldim,lldim_x,2)	
-            Call ocnread(latlon,nscale_x,lldim_x,coverout,bathdatafile)
+            Call ocnread(latlon,nscale_x,lldim_x,coverout,bathdatafile,ncid(0),varid(0),ncfile(0))
           case('river')
-            call riverread(latlon,nscale,lldim,coverout,bathdatafile)
+            call riverread(latlon,nscale,lldim,coverout,bathdatafile,ncid,varid,ncfile,domname,domsize,domll)
           case default
             Write(6,*) 'ERROR: Cannot find data ',trim(datatype)
             call finishbanner
@@ -339,7 +454,6 @@ If (subsec.NE.0) then
           End Do
         end if
         Deallocate(coverout)
-
       Else
         Write(6,*) 'No points in valid range'
       End If
@@ -354,6 +468,23 @@ Deallocate(sermask)
 
 dataout=dataout/Real(countn)
 
+select case(datatype)
+  case('bath')
+    if ( ncfile(0) ) then
+      ierr = nf90_close(ncid(0))  
+    else
+      close(10)
+    end if
+  case('river')
+    do idom = 1,7
+      if ( ncfile(idom) ) then
+        ierr = nf90_close(ncid(idom))  
+      else
+        close(10+idom)
+      end if  
+    end do
+end select    
+
 Write(6,*) "Task complete"
 
 Return
@@ -364,7 +495,7 @@ End
 ! This subroutine reads bathymetry data down to nscale=2km resolution
 !
 
-Subroutine ocnread(latlon,nscale,lldim,coverout,bathdatafile)
+Subroutine ocnread(latlon,nscale,lldim,coverout,bathdatafile,ncid,varid,ncfile)
 
 use netcdf_m
 
@@ -379,28 +510,11 @@ real, dimension(21600,nscale) :: databuffer
 real, dimension(21600) :: datatemp
 Integer, dimension(2,2) :: jin,jout
 Integer ilat,ilon,jlat,recpos,i,j
-integer ncid, varid, ierr
+integer ierr
+integer, intent(in) :: ncid, varid
 Integer, dimension(2) :: llint
-logical ncfile
+logical, intent(in) :: ncfile
 character(len=*), intent(in) :: bathdatafile
-
-ierr = nf90_open(trim(bathdatafile)//'.nc',nf90_nowrite,ncid)
-if ( ierr==nf90_noerr ) then
-  ncfile = .true.
-  write(6,*) "Found netcdf version ",trim(bathdatafile)
-  ierr = nf90_inq_varid(ncid,"bath",varid)
-else  
-  ierr = nf90_open(trim(bathdatafile),nf90_nowrite,ncid)
-  if ( ierr==nf90_noerr ) then
-    ncfile = .true.
-    write(6,*) "Found netcdf version ",trim(bathdatafile)
-    ierr = nf90_inq_varid(ncid,"bath",varid)    
-  else
-    ncfile = .false.
-    ! Must be compiled using 1 byte record lengths
-    Open(10,FILE=bathdatafile,ACCESS='DIRECT',FORM='UNFORMATTED',RECL=86400,CONVERT='LITTLE_ENDIAN',STATUS='OLD')
-  end if
-end if
 
 Call solvejshift(latlon(1),jin,jout,60)
 
@@ -433,12 +547,6 @@ Do ilat=1,lldim(2)
  
 End Do
 
-if ( ncfile ) then
-  ierr = nf90_close(ncid)  
-else
-  close(10)
-end if
-
 Return
 End
 
@@ -446,7 +554,7 @@ End
 ! This subroutine reads river accumulation data down to nscale=1km resolution
 !
 
-Subroutine riverread(latlon,nscale,lldim,coverout,riverdatapath)
+Subroutine riverread(latlon,nscale,lldim,coverout,riverdatapath,ncid,varid,ncfile,domname,domsize,domll)
 
 use netcdf_m
 
@@ -462,109 +570,18 @@ real rtmp, rlat, rlon
 integer, dimension(43200,nscale) :: databuffer
 integer(kind=4), dimension(43200) :: dataread
 integer(kind=4), dimension(43200) :: datatemp
-real, dimension(maxidom,4) :: domll
+real, dimension(maxidom,4), intent(in) :: domll
 Integer, dimension(2,2) :: jin,jout
 Integer ilat,ilon,jlat,recpos,i,j
 integer posx_beg, posx_end, recpos_local
 integer idom
 integer ierr
-integer, dimension(maxidom) :: ncid, varid
+integer, dimension(maxidom), intent(in) :: ncid, varid
 Integer, dimension(2) :: llint
-integer, dimension(maxidom,2) :: domsize
-logical, dimension(maxidom) :: ncfile
+integer, dimension(maxidom,2), intent(in) :: domsize
+logical, dimension(maxidom), intent(in) :: ncfile
 character(len=*), intent(in) :: riverdatapath
-character(len=20), dimension(maxidom) :: domname
-
-domname(1) = "af_acc_30s.bil"
-domsize(1,1) = 8880
-domsize(1,2) = 8760
-domll(1,1) = -19.
-domll(1,2) = 55.
-domll(1,3) = -35.
-domll(1,4) = 38.
-domname(2) = "as_acc_30s.bil"
-domsize(2,1) = 14760
-domsize(2,2) = 8760
-domll(2,1) = 57.
-domll(2,2) = 180.
-domll(2,3) = -12.
-domll(2,4) = 61.
-domname(3) = "au_acc_30s.bil"
-domsize(3,1) = 8160
-domsize(3,2) = 5520
-domll(3,1) = 112.
-domll(3,2) = 180.
-domll(3,3) = -56.
-domll(3,4) = -10.
-domname(4) = "ca_acc_30s.bil"
-domsize(4,1) = 7080
-domsize(4,2) = 4080
-domll(4,1) = -119.
-domll(4,2) = -60.
-domll(4,3) = 5.
-domll(4,4) = 39.
-domname(5) = "eu_acc_30s.bil"
-domsize(5,1) = 10080
-domsize(5,2) = 6000
-domll(5,1) = -14.
-domll(5,2) = 70.
-domll(5,3) = 12.
-domll(5,4) = 62.
-domname(6) = "na_acc_30s.bil"
-domsize(6,1) = 10320
-domsize(6,2) = 4440
-domll(6,1) = -138.
-domll(6,2) = -52.
-domll(6,3) = 24.
-domll(6,4) = 61.
-domname(7) = "sa_acc_30s.bil"
-domsize(7,1) = 7320
-domsize(7,2) = 8520
-domll(7,1) = -93.
-domll(7,2) = -32.
-domll(7,3) = -56.
-domll(7,4) = 15.
-
-do idom = 1,maxidom
-  if ( trim(riverdatapath)/='' ) then
-    ierr = nf90_open(trim(riverdatapath)//'/'//trim(domname(idom))//'.nc',nf90_nowrite,ncid(idom))
-    if ( ierr==nf90_noerr ) then
-      ncfile(idom) = .true.
-      write(6,*) "Found netcdf version ",trim(domname(idom))
-      ierr = nf90_inq_varid(ncid(idom),"riveracc",varid(idom))
-    else  
-      ierr = nf90_open(trim(riverdatapath)//'/'//trim(domname(idom)),nf90_nowrite,ncid(idom))
-      if ( ierr==nf90_noerr ) then
-        ncfile(idom) = .true.
-        write(6,*) "Found netcdf version ",trim(domname(idom))
-        ierr = nf90_inq_varid(ncid(idom),"riveracc",varid(idom))    
-      else
-        ncfile(idom) = .false.   
-        ! Must be compiled using 1 byte record lengths
-        Open(10+idom,FILE=trim(riverdatapath)//'/'//trim(domname(idom)),access='direct',form='unformatted',recl=domsize(idom,1)*4, &
-         convert='LITTLE_ENDIAN',status='old')
-      end if
-    end if  
-  else
-    ierr = nf90_open(trim(domname(idom))//'.nc',nf90_nowrite,ncid(idom))
-    if ( ierr==nf90_noerr ) then
-      ncfile(idom) = .true.
-      write(6,*) "Found netcdf version ",trim(domname(idom))
-      ierr = nf90_inq_varid(ncid(idom),"riveracc",varid(idom))
-    else  
-      ierr = nf90_open(trim(domname(idom)),nf90_nowrite,ncid(idom))
-      if ( ierr==nf90_noerr ) then
-        ncfile(idom) = .true.
-        write(6,*) "Found netcdf version ",trim(domname(idom))
-        ierr = nf90_inq_varid(ncid(idom),"riveracc",varid(idom))    
-      else
-        ncfile(idom) = .false.  
-        Open(10+idom,FILE=trim(domname(idom)),access='direct',form='unformatted',recl=domsize(idom,1)*4,convert='LITTLE_ENDIAN', &
-         status='old')  
-      end if
-    end if  
-  end if
-end do
+character(len=20), dimension(maxidom), intent(in) :: domname
 
 Call solvejshift(latlon(1),jin,jout,120)
 
@@ -610,14 +627,6 @@ Do ilat=1,lldim(2)
  
 End Do
 
-do idom = 1,maxidom
-  if ( ncfile(idom) ) then
-    ierr = nf90_close(ncid(idom))  
-  else
-    close(10+idom)
-  end if  
-end do
-
 Return
 End
     
@@ -627,7 +636,7 @@ End
 ! (i.e., no storage, simply read and bin)
 !
 
-Subroutine ocnstream(sibdim,coverout,countn,bathdatafile)
+Subroutine ocnstream(sibdim,coverout,countn,bathdatafile,ncid,varid,ncfile)
 
 Use ccinterp
 use netcdf_m
@@ -641,32 +650,15 @@ Real callon,callat
 Integer, dimension(sibdim(1),sibdim(2)), intent(out) :: countn
 Real, dimension(21600) :: databuffer
 Integer ilat,ilon,lci,lcj,nface
-integer ncid, varid, ierr
-logical ncfile
+integer ierr
+integer, intent(in) :: ncid, varid
+logical, intent(in) :: ncfile
 character(len=*), intent(in) :: bathdatafile
 
 coverout=0
 countn=0
 
 Write(6,*) "Read ETOPO data (stream)"
-
-ierr = nf90_open(trim(bathdatafile)//'.nc',nf90_nowrite,ncid)
-if ( ierr==nf90_noerr ) then
-  ncfile = .true.
-  write(6,*) "Found netcdf version ",trim(bathdatafile)
-  ierr = nf90_inq_varid(ncid,"bath",varid)
-else  
-  ierr = nf90_open(trim(bathdatafile),nf90_nowrite,ncid)
-  if ( ierr==nf90_noerr ) then
-    ncfile = .true.
-    write(6,*) "Found netcdf version ",trim(bathdatafile)
-    ierr = nf90_inq_varid(ncid,"bath",varid)    
-  else
-    ncfile = .false.
-    ! Must be compiled using 1 byte record lengths
-    Open(10,FILE=bathdatafile,ACCESS='DIRECT',FORM='UNFORMATTED',RECL=86400,CONVERT='LITTLE_ENDIAN',STATUS='OLD')
-  end if
-end if
 
 
 Do ilat=1,10800
@@ -698,12 +690,6 @@ Do ilat=1,10800
   End Do
 End Do
 
-if ( ncfile ) then
-  ierr = nf90_close(ncid)
-else
-  Close(10)
-end if
-
 Return
 End
 
@@ -712,7 +698,7 @@ End
 ! (i.e., no storage, simply read and bin)
 !
         
-Subroutine riverstream(sibdim,coverout,countn,riverdatapath)
+Subroutine riverstream(sibdim,coverout,countn,riverdatapath,ncid,varid,ncfile,domname,domsize,domll)
 
 Use ccinterp
 use netcdf_m
@@ -726,7 +712,7 @@ Real, dimension(sibdim(1),sibdim(2)), intent(out) :: coverout
 Real aglon,aglat,alci,alcj
 Real callon,callat
 real rlat
-real, dimension(maxidom,4) :: domll
+real, dimension(maxidom,4), intent(in) :: domll
 Integer, dimension(sibdim(1),sibdim(2)), intent(out) :: countn
 integer(kind=4), dimension(43200) :: databuffer
 integer(kind=4), dimension(43200) :: dataread
@@ -734,109 +720,17 @@ Integer ilat,ilon,lci,lcj,nface
 integer recpos_local, posx_beg, posx_end
 integer idom
 integer ierr
-integer, dimension(maxidom) :: ncid, varid
-integer, dimension(maxidom,2) :: domsize
-logical, dimension(maxidom) :: ncfile
+integer, dimension(maxidom), intent(in) :: ncid, varid
+integer, dimension(maxidom,2), intent(in) :: domsize
+logical, dimension(maxidom), intent(in) :: ncfile
 character(len=*), intent(in) :: riverdatapath
-character(len=20), dimension(maxidom) :: domname
-
+character(len=20), dimension(maxidom), intent(in) :: domname
 
 coverout=0
 countn=0
 
-domname(1) = "af_acc_30s.bil"
-domsize(1,1) = 8880
-domsize(1,2) = 8760
-domll(1,1) = -19.
-domll(1,2) = 55.
-domll(1,3) = -35.
-domll(1,4) = 38.
-domname(2) = "as_acc_30s.bil"
-domsize(2,1) = 14760
-domsize(2,2) = 8760
-domll(2,1) = 57.
-domll(2,2) = 180.
-domll(2,3) = -12.
-domll(2,4) = 61.
-domname(3) = "au_acc_30s.bil"
-domsize(3,1) = 8160
-domsize(3,2) = 5520
-domll(3,1) = 112.
-domll(3,2) = 180.
-domll(3,3) = -56.
-domll(3,4) = -10.
-domname(4) = "ca_acc_30s.bil"
-domsize(4,1) = 7080
-domsize(4,2) = 4080
-domll(4,1) = -119.
-domll(4,2) = -60.
-domll(4,3) = 5.
-domll(4,4) = 39.
-domname(5) = "eu_acc_30s.bil"
-domsize(5,1) = 10080
-domsize(5,2) = 6000
-domll(5,1) = -14.
-domll(5,2) = 70.
-domll(5,3) = 12.
-domll(5,4) = 62.
-domname(6) = "na_acc_30s.bil"
-domsize(6,1) = 10320
-domsize(6,2) = 4440
-domll(6,1) = -138.
-domll(6,2) = -52.
-domll(6,3) = 24.
-domll(6,4) = 61.
-domname(7) = "sa_acc_30s.bil"
-domsize(7,1) = 7320
-domsize(7,2) = 8520
-domll(7,1) = -93.
-domll(7,2) = -32.
-domll(7,3) = -56.
-domll(7,4) = 15.
-
 
 Write(6,*) "Read Hydroshed data (stream)"
-
-! Must be compiled using 1 byte record lengths
-do idom = 1,maxidom
-  if ( riverdatapath/='' ) then
-    ierr = nf90_open(trim(riverdatapath)//'/'//trim(domname(idom))//'.nc',nf90_nowrite,ncid(idom))
-    if ( ierr==nf90_noerr ) then
-      ncfile(idom) = .true.
-      write(6,*) "Found netcdf version ",trim(domname(idom))
-      ierr = nf90_inq_varid(ncid(idom),"riveracc",varid(idom))
-    else  
-      ierr = nf90_open(trim(riverdatapath)//'/'//trim(domname(idom)),nf90_nowrite,ncid(idom))
-      if ( ierr==nf90_noerr ) then
-        ncfile(idom) = .true.
-        write(6,*) "Found netcdf version ",trim(domname(idom))
-        ierr = nf90_inq_varid(ncid(idom),"riveracc",varid(idom))    
-      else
-        ncfile(idom) = .false.  
-        Open(10+idom,FILE=trim(riverdatapath)//'/'//trim(domname(idom)),access='direct',form='unformatted',recl=domsize(idom,1)*4, &
-         convert='LITTLE_ENDIAN',status='old')
-      end if
-    end if  
-  else
-    ierr = nf90_open(trim(domname(idom))//'.nc',nf90_nowrite,ncid(idom))
-    if ( ierr==nf90_noerr ) then
-      ncfile(idom) = .true.
-      write(6,*) "Found netcdf version ",trim(domname(idom))
-      ierr = nf90_inq_varid(ncid(idom),"riveracc",varid(idom))
-    else  
-      ierr = nf90_open(trim(domname(idom)),nf90_nowrite,ncid(idom))
-      if ( ierr==nf90_noerr ) then
-        ncfile(idom) = .true.
-        write(6,*) "Found netcdf version ",trim(domname(idom))
-        ierr = nf90_inq_varid(ncid(idom),"riveracc",varid(idom))    
-      else
-        ncfile(idom) = .false. 
-        Open(10+idom,FILE=trim(domname(idom)),access='direct',form='unformatted',recl=domsize(idom,1)*4,convert='LITTLE_ENDIAN', &
-         status='old')
-      end if
-    end if  
-  end if
-end do
 
 Do ilat=1,21600
 
@@ -877,14 +771,6 @@ Do ilat=1,21600
     
   End Do
 End Do
-
-do idom = 1,maxidom
-  if ( ncfile(idom) ) then
-    ierr = nf90_close(ncid(idom))  
-  else   
-    close(10+idom)
-  end if  
-end do
 
 Return
 End
