@@ -38,8 +38,9 @@ Integer i,j,k,lci,lcj,nx,ny,netcount
 Integer basesize,scalelimit,minscale
 Integer iadj,jadj
 integer idom, ierr
-integer, dimension(7) :: ncid, varid
+integer, dimension(0:7) :: ncid, varid
 integer, dimension(7,2) :: domsize
+integer, dimension(:,:,:), allocatable :: lcmap
 Real, dimension(sibdim(1),sibdim(2)), intent(out) :: dataout
 Real, dimension(sibdim(1),sibdim(2)), intent(in) :: grid
 Real, dimension(sibdim(1),sibdim(2),2), intent(in) :: tlld
@@ -56,7 +57,7 @@ Real ipol,callon,callat,indexlon,indexlat
 Logical, intent(in) :: fastocn
 Logical, dimension(:,:), allocatable :: sermask
 logical, dimension(sibdim(1),sibdim(2)) :: ctest
-logical, dimension(7) :: ncfile
+logical, dimension(0:7) :: ncfile
 character(len=*), intent(in) :: bathdatafile, datatype
 character(len=20), dimension(7) :: domname
 
@@ -250,7 +251,8 @@ If (fastocn) then
           ! Bin
           If (All(lldim.GT.0)) then
 
-            Allocate(coverout(lldim(1),lldim(2)))
+            Allocate( coverout(lldim(1),lldim(2)) )
+            allocate( lcmap(lldim(1),lldim(2),2) )
 	  
             select case(datatype)
               case('bath')
@@ -265,16 +267,27 @@ If (fastocn) then
             end select
 
             Write(6,*) 'Start bin'
+            ctest = grid>=real(minscale)
+!$OMP PARALLEL DO SCHEDULE(STATIC) DEFAULT(NONE) SHARED(lldim,latlon,nscale,sibdim,lcmap) PRIVATE(j,aglat,i,aglon,alci,alcj,nface,lci,lcj)              
+            do j=1,lldim(2)
+              aglat=callat(latlon(2),j,nscale)
+              do i=1,lldim(1)           
+                aglon=callon(latlon(1),i,nscale)
+                call lltoijmod(aglon,aglat,alci,alcj,nface)
+                lci = nint(alci)
+                lcj = nint(alcj)
+                lcj = lcj+nface*sibdim(1)
+                lcmap(i,j,1) = lci
+                lcmap(i,j,2) = lcj
+              end do
+            end do
+!$OMP END PARALLEL DO 
             if ( datatype=='river' ) then
               Do i=1,lldim(1)
                 Do j=1,lldim(2)
-                  aglon=callon(latlon(1),i,nscale)
-                  aglat=callat(latlon(2),j,nscale)
-                  Call lltoijmod(aglon,aglat,alci,alcj,nface)
-                  lci = nint(alci)
-                  lcj = nint(alcj)
-                  lcj = lcj+nface*sibdim(1)
-                  If (grid(lci,lcj).GE.real(minscale) .or. nscale==scalelimit ) then
+                  lci = lcmap(i,j,1)
+                  lcj = lcmap(i,j,2)
+                  If (ctest(lci,lcj) .or. nscale==scalelimit ) then
                     dataout(lci,lcj)=max(dataout(lci,lcj),coverout(i,j))
                     countn(lci,lcj)=1
                   End if
@@ -283,13 +296,9 @@ If (fastocn) then
             else ! usual
               Do i=1,lldim(1)
                 Do j=1,lldim(2)
-                  aglon=callon(latlon(1),i,nscale)
-                  aglat=callat(latlon(2),j,nscale)
-                  Call lltoijmod(aglon,aglat,alci,alcj,nface)
-                  lci = nint(alci)
-                  lcj = nint(alcj)
-                  lcj = lcj+nface*sibdim(1)
-                  If (grid(lci,lcj).GE.real(minscale)) then
+                  lci = lcmap(i,j,1)
+                  lcj = lcmap(i,j,2)
+                  If ( ctest(lci,lcj) ) then
                     dataout(lci,lcj)=dataout(lci,lcj)+coverout(i,j)
                     countn(lci,lcj)=countn(lci,lcj)+1
                   End if
@@ -298,7 +307,7 @@ If (fastocn) then
             end if
             Write(6,*) 'Bin complete'
 
-            Deallocate(coverout)
+            Deallocate( coverout, lcmap )
 
           Else
             Write(6,*) 'No points in valid range'
@@ -387,6 +396,7 @@ If (subsec.NE.0) then
         end select
 
         if ( datatype=='river' ) then
+!$OMP PARALLEL DO SCHEDULE(STATIC) DEFAULT(NONE) SHARED(sibdim,countn,rlld,latlon,nscale,lldim,coverout,dataout) PRIVATE(lci,lcj,aglon,aglat,serlon,serlat,i,j,iadj,jadj,rdat)
           Do lcj=1,sibdim(2)
             Do lci=1,sibdim(1)
               If (countn(lci,lcj)==0 ) then
@@ -419,7 +429,9 @@ If (subsec.NE.0) then
               End If
             End Do
           End Do
+!$OMP END PARALLEL DO          
         else ! usual
+!$OMP PARALLEL DO SCHEDULE(STATIC) DEFAULT(NONE) SHARED(sibdim,countn,rlld,latlon,nscale,lldim,coverout,dataout) PRIVATE(lci,lcj,aglon,aglat,serlon,serlat,i,j,iadj,jadj,rdat)
           Do lcj=1,sibdim(2)
             Do lci=1,sibdim(1)
               If (countn(lci,lcj)==0) then
@@ -452,6 +464,7 @@ If (subsec.NE.0) then
               End If
             End Do
           End Do
+!$OMP END PARALLEL DO
         end if
         Deallocate(coverout)
       Else
@@ -576,10 +589,10 @@ Integer ilat,ilon,jlat,recpos,i,j
 integer posx_beg, posx_end, recpos_local
 integer idom
 integer ierr
-integer, dimension(maxidom), intent(in) :: ncid, varid
+integer, dimension(0:maxidom), intent(in) :: ncid, varid
 Integer, dimension(2) :: llint
 integer, dimension(maxidom,2), intent(in) :: domsize
-logical, dimension(maxidom), intent(in) :: ncfile
+logical, dimension(0:maxidom), intent(in) :: ncfile
 character(len=*), intent(in) :: riverdatapath
 character(len=20), dimension(maxidom), intent(in) :: domname
 
@@ -720,9 +733,9 @@ Integer ilat,ilon,lci,lcj,nface
 integer recpos_local, posx_beg, posx_end
 integer idom
 integer ierr
-integer, dimension(maxidom), intent(in) :: ncid, varid
+integer, dimension(0:maxidom), intent(in) :: ncid, varid
 integer, dimension(maxidom,2), intent(in) :: domsize
-logical, dimension(maxidom), intent(in) :: ncfile
+logical, dimension(0:maxidom), intent(in) :: ncfile
 character(len=*), intent(in) :: riverdatapath
 character(len=20), dimension(maxidom), intent(in) :: domname
 

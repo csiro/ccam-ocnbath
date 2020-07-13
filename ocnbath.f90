@@ -274,7 +274,9 @@ elsewhere
   depth = 0.
 end where
 
-deallocate(topdata,ocndata,lsdata)
+deallocate(topdata)
+deallocate(ocndata)
+deallocate(lsdata)
 
 ! Filter bathymetry
 if (bathfilt) then
