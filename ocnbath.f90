@@ -68,7 +68,13 @@ rtest=1.
 
 ! Read namelist
 write(6,*) 'Input &ocnnml namelist'
+#ifdef unitnml
+open( 99, file='ocnbath.nml', status='old' )
+read( 99, NML=ocnnml )
+close( 99 )
+#else
 read(5,NML=ocnnml)
+#endif 
 write(6,*) 'Namelist accepted'
 
 ! Generate veg data
