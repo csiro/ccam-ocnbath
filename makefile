@@ -5,6 +5,9 @@ ifeq ($(MAGNUS),yes)
 FC = ftn
 endif
 XFLAGS = -qopenmp -xHost -assume byterecl -fp-model precise -traceback
+ifeq ($(ZEN3),yes)
+XFLAGS = -qopenmp -axCORE-AVX2 -assume byterecl -fp-model precise -traceback
+endif
 LIBS = -L $(NETCDF_ROOT)/lib -lnetcdf
 ifneq ($(NCCLIB),yes)
 LIBS += -lnetcdff
@@ -17,6 +20,9 @@ endif
 ifeq ($(GFORTRAN),yes)
 FC = gfortran
 XFLAGS = -O2 -mtune=native -march=native -I $(NETCDF_ROOT)/include
+ifeq ($(ZEN3),yes)
+XFLAGS = -O2 -fallow-argument-mismatch -mtune=native -march=native -I $(NETCDF_ROOT)/include
+endif
 PPFLAG90 = -x f95-cpp-input
 PPFLAG77 = -x f77-cpp-input
 endif
