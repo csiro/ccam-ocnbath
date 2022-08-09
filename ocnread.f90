@@ -268,7 +268,8 @@ If (fastocn) then
 
             Write(6,*) 'Start bin'
             ctest = grid>=real(minscale)
-!$OMP PARALLEL DO SCHEDULE(STATIC) DEFAULT(NONE) SHARED(lldim,latlon,nscale,sibdim,lcmap) PRIVATE(j,aglat,i,aglon,alci,alcj,nface,lci,lcj)              
+!$OMP PARALLEL DO SCHEDULE(STATIC) DEFAULT(NONE) SHARED(lldim,latlon,nscale,sibdim,lcmap) &
+!$OMP   PRIVATE(j,aglat,i,aglon,alci,alcj,nface,lci,lcj)
             do j=1,lldim(2)
               aglat=callat(latlon(2),j,nscale)
               do i=1,lldim(1)           
@@ -396,7 +397,8 @@ If (subsec.NE.0) then
         end select
 
         if ( datatype=='river' ) then
-!$OMP PARALLEL DO SCHEDULE(STATIC) DEFAULT(NONE) SHARED(sibdim,countn,rlld,latlon,nscale,lldim,coverout,dataout) PRIVATE(lci,lcj,aglon,aglat,serlon,serlat,i,j,iadj,jadj,rdat)
+!$OMP PARALLEL DO SCHEDULE(STATIC) DEFAULT(NONE) SHARED(sibdim,countn,rlld,latlon,nscale,lldim,coverout,dataout) &
+!$OMP   PRIVATE(lci,lcj,aglon,aglat,serlon,serlat,i,j,iadj,jadj,rdat)
           Do lcj=1,sibdim(2)
             Do lci=1,sibdim(1)
               If (countn(lci,lcj)==0 ) then
@@ -431,7 +433,8 @@ If (subsec.NE.0) then
           End Do
 !$OMP END PARALLEL DO          
         else ! usual
-!$OMP PARALLEL DO SCHEDULE(STATIC) DEFAULT(NONE) SHARED(sibdim,countn,rlld,latlon,nscale,lldim,coverout,dataout) PRIVATE(lci,lcj,aglon,aglat,serlon,serlat,i,j,iadj,jadj,rdat)
+!$OMP PARALLEL DO SCHEDULE(STATIC) DEFAULT(NONE) SHARED(sibdim,countn,rlld,latlon,nscale,lldim,coverout,dataout) &
+!$OMP   PRIVATE(lci,lcj,aglon,aglat,serlon,serlat,i,j,iadj,jadj,rdat)
           Do lcj=1,sibdim(2)
             Do lci=1,sibdim(1)
               If (countn(lci,lcj)==0) then
