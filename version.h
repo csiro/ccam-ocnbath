@@ -1,2 +1,2 @@
 character(len=*), parameter :: version = &
-'OCNBATH Date:   Wed Aug 10 04:34:31 2022 +0800 commit 6c2be118dea631fb8d0438c32bc345a29b712097'
+'OCNBATH Date:   Wed Aug 10 05:09:22 2022 +0800 commit 99b4ce6cd185516dc884f5b4bc001385a1e5fc90'

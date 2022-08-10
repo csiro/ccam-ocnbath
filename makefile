@@ -21,7 +21,7 @@ endif
 ifeq ($(SETONIX),yes)
 FC = ftn
 INC =
-LIBS =
+LIBS = -lnetcdf
 XFLAGS = -O2 -mtune=native -march=native -fallow-argument-mismatch -Dncclib -fopenmp
 PPFLAG90 = -x f95-cpp-input
 PPFLAG77 = -x f77-cpp-input
