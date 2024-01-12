@@ -3,9 +3,6 @@ ifneq ($(CUSTOM),yes)
 FC = ifort
 XFLAGS = -qopenmp -xHost -assume byterecl -fp-model precise -traceback
 LIBS = -L $(NETCDF_ROOT)/lib -lnetcdf
-ifneq ($(NCCLIB),yes)
-LIBS += -lnetcdff
-endif
 INC = -I $(NETCDF_ROOT)/include
 PPFLAG90 = -fpp
 PPFLAG77 = -fpp
@@ -35,16 +32,11 @@ PPFLAG77 = -eZ
 DEBUGFLAG =
 endif
 
-ifeq ($(NCCLIB),yes)
-XFLAGS += -Dncclib
-endif
-
 
 OBJT = ocnbath.o ocnread.o readswitch.o ccinterp.o\
        latltoij_m.o setxyz_m.o xyzinfo_m.o newmpar_m.o \
        indices_m.o parm_m.o precis_m.o ind_m.o jimco_m.o jimcc_m.o \
-       jim_utils.o nfft_m.o ncwrite.o ncread.o misc.o netcdf_m.o \
-       stacklimit.o
+       jim_utils.o nfft_m.o ncwrite.o ncread.o misc.o netcdf_m.o 
 
 ocnbath:$(OBJT)
 	$(FC) $(XFLAGS) $(OBJT) $(LIBS) -o ocnbath
@@ -55,8 +47,6 @@ clean:
 
 .SUFFIXES:.f90
 
-stacklimit.o: stacklimit.c
-	cc -c stacklimit.c
 version.h: FORCE
 	rm -f brokenver tmpver
 	echo "character(len=*), parameter :: version = &" > brokenver
