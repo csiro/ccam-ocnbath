@@ -1,6 +1,6 @@
 ! Conformal Cubic Atmospheric Model
     
-! Copyright 2015-2020 Commonwealth Scientific Industrial Research Organisation (CSIRO)
+! Copyright 2015-2024 Commonwealth Scientific Industrial Research Organisation (CSIRO)
     
 ! This file is part of the Conformal Cubic Atmospheric Model (CCAM)
 !
@@ -38,6 +38,7 @@ Integer i,j,k,lci,lcj,nx,ny,netcount
 Integer basesize,scalelimit,minscale
 Integer iadj,jadj
 integer idom, ierr
+integer jj
 integer, dimension(0:7) :: ncid, varid
 integer, dimension(7,2) :: domsize
 integer, dimension(:,:,:), allocatable :: lcmap
@@ -284,27 +285,38 @@ If (fastocn) then
             end do
 !$OMP END PARALLEL DO 
             if ( datatype=='river' ) then
-              Do i=1,lldim(1)
-                Do j=1,lldim(2)
-                  lci = lcmap(i,j,1)
-                  lcj = lcmap(i,j,2)
-                  If (ctest(lci,lcj) .or. nscale==scalelimit ) then
-                    dataout(lci,lcj)=max(dataout(lci,lcj),coverout(i,j))
-                    countn(lci,lcj)=1
-                  End if
+                
+!$OMP PARALLEL DO SCHEDULE(STATIC) PRIVATE(jj,i,j,lci,lcj)
+              do jj = 1,sibdim(2)
+                Do i=1,lldim(1)
+                  Do j=1,lldim(2)
+                    lci = lcmap(i,j,1)
+                    lcj = lcmap(i,j,2)
+                    if ( lcj==jj ) then 
+                      If (ctest(lci,lcj) .or. nscale==scalelimit ) then
+                        dataout(lci,lcj)=max(dataout(lci,lcj),coverout(i,j))
+                        countn(lci,lcj)=1
+                      End if
+                    end if
+                  End Do
                 End Do
-              End Do
+              end do
+!$OMP END PARALLEL DO
             else ! usual
-              Do i=1,lldim(1)
-                Do j=1,lldim(2)
-                  lci = lcmap(i,j,1)
-                  lcj = lcmap(i,j,2)
-                  If ( ctest(lci,lcj) ) then
-                    dataout(lci,lcj)=dataout(lci,lcj)+coverout(i,j)
-                    countn(lci,lcj)=countn(lci,lcj)+1
-                  End if
+!$OMP PARALLEL DO SCHEDULE(STATIC) PRIVATE(jj,i,j,lci,lcj)
+              do jj = 1,sibdim(2)  
+                Do i=1,lldim(1)
+                  Do j=1,lldim(2)
+                    lci = lcmap(i,j,1)
+                    lcj = lcmap(i,j,2)
+                    If ( lcj==jj .and. ctest(lci,lcj) ) then
+                      dataout(lci,lcj)=dataout(lci,lcj)+coverout(i,j)
+                      countn(lci,lcj)=countn(lci,lcj)+1
+                    End if
+                  End Do
                 End Do
-              End Do
+              end do
+!$OMP END PARALLEL DO
             end if
             Write(6,*) 'Bin complete'
 
