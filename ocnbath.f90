@@ -1,6 +1,6 @@
 ! Conformal Cubic Atmospheric Model
     
-! Copyright 2015-2020 Commonwealth Scientific Industrial Research Organisation (CSIRO)
+! Copyright 2015-2026 Commonwealth Scientific Industrial Research Organisation (CSIRO)
     
 ! This file is part of the Conformal Cubic Atmospheric Model (CCAM)
 !
@@ -21,7 +21,11 @@
     
 program ocnbath
 
-! This code creates CCAM ocean depth data using the ETOPO2 dataset
+! This code creates CCAM ocean depth data
+
+#ifdef _OPENMP
+use omp_lib, only : omp_get_max_threads
+#endif
 
 implicit None
 
@@ -45,8 +49,12 @@ write(6,*) "CCAM: Starting ocnbath"
 write(6,*) "=============================================================================="
 
 
-Write(6,*) 'OCNBATH - ETOPO 2km to CC grid'
+Write(6,*) 'OCNBATH - Bathymetry and river routing to CC grid'
 write(6,*) version
+
+#ifdef _OPENMP
+write(6,*) "Using OpenMP with number of threads = ",omp_get_max_threads()
+#endif
 
 ! Read switches
 nopts=1
@@ -63,7 +71,13 @@ rtest=1.
 
 ! Read namelist
 write(6,*) 'Input &ocnnml namelist'
+#ifdef unitnml
+open( 99, file='ocnbath.nml', status='old' )
+read( 99, NML=ocnnml )
+close( 99 )
+#else
 read(5,NML=ocnnml)
+#endif 
 write(6,*) 'Namelist accepted'
 
 ! Generate veg data
@@ -225,10 +239,11 @@ real schmidt,dsx,ds
 real rmax,lmax,dum_sum,dum_ave,vol_old,vol_new
 character(len=*), dimension(1:nopts,1:2), intent(in) :: options
 character(len=*), dimension(1:4), intent(in) :: fname
-character*80, dimension(1:3) :: outputdesc
-character*1024 returnoption,csize
-character*45 header
-character*10 formout
+character(len=80), dimension(1:3) :: outputdesc
+character(len=1024) returnoption,csize
+character(len=45) header
+character(len=10) formout
+character(len=5) :: bathmode
 logical, intent(in) :: fastocn, bathfilt
 
 csize=returnoption('-s',options,nopts)
@@ -259,8 +274,10 @@ lsdata = 1. - lsdata
 ! Determine lat/lon to CC mapping
 call cgg2(rlld,gridout,sibdim,lonlat,schmidt,ds,in,ie,is,iw)
 
+call checkbathymetry(fname(3),bathmode)
+
 ! Read ETOPO data
-call getdata(ocndata,lonlat,gridout,rlld,sibdim,sibsize,fastocn,binlimit,fname(3),'bath')
+call getdata(ocndata,lonlat,gridout,rlld,sibdim,sibsize,fastocn,binlimit,fname(3),bathmode)
 
 ! Calculate depth
 where ( lsdata<0.5 )
@@ -434,7 +451,7 @@ if (bathfilt) then
   
   deallocate(dum)
   
-end if
+end if ! bathfilt
 
 deallocate(in,is,ie,iw)
 
@@ -479,3 +496,43 @@ deallocate(depth,riveracc)
 
 Return
 End subroutine
+    
+subroutine checkbathymetry(fname,bathmode)
+
+use netcdf_m
+
+implicit none
+
+integer ierr, ncid, varid
+character(len=*), intent(in) :: fname
+character(len=*), intent(out) :: bathmode
+
+ierr = nf_open(fname,nf_nowrite,ncid)
+if ( ierr /= nf_noerr ) then
+  write(6,*) "WARN: bathymetry is not a netcdf file. Assiming older configuration"  
+  bathmode = 'bath' ! original binary ETOPO
+  return
+end if
+
+ierr = nf_inq_varid(ncid,'bath',varid)
+if ( ierr == nf_noerr ) then
+  bathmode = 'bath' ! original netcdf ETOPO
+  ierr = nf_close(ncid)
+  return
+end if
+
+! MJT notes - This should be softwired to use any netcdf file
+ierr = nf_inq_varid(ncid,'elevation',varid)
+if ( ierr == nf_noerr ) then
+  bathmode = 'bath2'
+  ierr = nf_close(ncid)
+  return
+end if
+    
+write(6,*) "ERROR: Cannot identify bathymetry file"
+call finishbanner
+stop -1
+
+return
+end subroutine checkbathymetry
+  

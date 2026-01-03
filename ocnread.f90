@@ -1,6 +1,6 @@
 ! Conformal Cubic Atmospheric Model
     
-! Copyright 2015-2024 Commonwealth Scientific Industrial Research Organisation (CSIRO)
+! Copyright 2015-2026 Commonwealth Scientific Industrial Research Organisation (CSIRO)
     
 ! This file is part of the Conformal Cubic Atmospheric Model (CCAM)
 !
@@ -66,7 +66,7 @@ dataout=0.
 countn=0
 
 ! Determine scale limits
-nscale=999
+nscale=9999
 
 baselon=real(int(glonlat(1)-180.))
 rlld=tlld
@@ -135,7 +135,7 @@ domll(7,4) = 15.
 select case(datatype)
   case('bath')
     Write(6,*) 'Process ETOPO1 dataset'
-    scalelimit=2
+    scalelimit=20
     ierr = nf90_open(trim(bathdatafile)//'.nc',nf90_nowrite,ncid(0))
     if ( ierr==nf90_noerr ) then
       ncfile(0) = .true.
@@ -153,9 +153,15 @@ select case(datatype)
         Open(10,FILE=bathdatafile,ACCESS='DIRECT',FORM='UNFORMATTED',RECL=86400,CONVERT='LITTLE_ENDIAN',STATUS='OLD')
       end if
     end if
+  case('bath2')
+    Write(6,*) 'Process GEBCO dataset'
+    scalelimit=5
+    ierr = nf90_open(trim(bathdatafile),nf90_nowrite,ncid(0))
+    ncfile(0) = .true.
+    ierr = nf90_inq_varid(ncid(0),"elevation",varid(0))    
   case('river')
     write(6,*) 'Process Hydrosheds dataset'
-    scalelimit=1
+    scalelimit=10
     do idom = 1,7
       if ( trim(bathdatafile)/='' ) then
         ierr = nf90_open(trim(bathdatafile)//'/'//trim(domname(idom))//'.nc',nf90_nowrite,ncid(idom))
@@ -257,10 +263,14 @@ If (fastocn) then
 	  
             select case(datatype)
               case('bath')
-                Call kmconvert(nscale,nscale_x,lldim,lldim_x,2)
+                Call kmconvert(nscale,nscale_x,lldim,lldim_x,20)
                 Call ocnread(latlon,nscale_x,lldim_x,coverout,bathdatafile,ncid(0),varid(0),ncfile(0))
+              case('bath2')
+                Call kmconvert(nscale,nscale_x,lldim,lldim_x,5)
+                Call ocnread2(latlon,nscale_x,lldim_x,coverout,bathdatafile,ncid(0),varid(0),ncfile(0))
               case('river')
-                call riverread(latlon,nscale,lldim,coverout,bathdatafile,ncid,varid,ncfile,domname,domsize,domll)
+                Call kmconvert(nscale,nscale_x,lldim,lldim_x,10)  
+                call riverread(latlon,nscale_x,lldim_x,coverout,bathdatafile,ncid,varid,ncfile,domname,domsize,domll)
               case default
                 Write(6,*) 'ERROR: Cannot find data ',trim(datatype)
                 call finishbanner
@@ -268,7 +278,7 @@ If (fastocn) then
             end select
 
             Write(6,*) 'Start bin'
-            ctest = grid>=real(minscale)
+            ctest = grid*10.>=real(minscale)
 !$OMP PARALLEL DO SCHEDULE(STATIC) DEFAULT(NONE) SHARED(lldim,latlon,nscale,sibdim,lcmap) &
 !$OMP   PRIVATE(j,aglat,i,aglon,alci,alcj,nface,lci,lcj)
             do j=1,lldim(2)
@@ -340,6 +350,8 @@ Else
   select case(datatype)
     case('bath')
       Call ocnstream(sibdim,dataout,countn,bathdatafile,ncid(0),varid(0),ncfile(0))
+    case('bath2')
+      Call ocnstream2(sibdim,dataout,countn,bathdatafile,ncid(0),varid(0),ncfile(0))
     case('river')
       call riverstream(sibdim,dataout,countn,bathdatafile,ncid,varid,ncfile,domname,domsize,domll)
     Case DEFAULT
@@ -356,7 +368,7 @@ Allocate(sermask(2,2))
 nscale=scalelimit
 
 latlon=(/ baselon, 90. /)
-llstore=(/ 43200/nscale , 21600/nscale /)
+llstore=(/ 432000/nscale , 216000/nscale /)
 ctest = countn==0
 Call searchdim(4,sll,nscale,0.,latlon,llstore,grid,ctest,rlld,sibdim)
 Call scaleconvert(nscale,subsec,llstore,sll,sibsize)
@@ -398,10 +410,14 @@ If (subsec.NE.0) then
 	
         select case(datatype)
           case('bath')
-            Call kmconvert(nscale,nscale_x,lldim,lldim_x,2)	
+            Call kmconvert(nscale,nscale_x,lldim,lldim_x,20)	
             Call ocnread(latlon,nscale_x,lldim_x,coverout,bathdatafile,ncid(0),varid(0),ncfile(0))
+          case('bath2')
+            Call kmconvert(nscale,nscale_x,lldim,lldim_x,5)	
+            Call ocnread2(latlon,nscale_x,lldim_x,coverout,bathdatafile,ncid(0),varid(0),ncfile(0))
           case('river')
-            call riverread(latlon,nscale,lldim,coverout,bathdatafile,ncid,varid,ncfile,domname,domsize,domll)
+            Call kmconvert(nscale,nscale_x,lldim,lldim_x,10)  
+            call riverread(latlon,nscale_x,lldim_x,coverout,bathdatafile,ncid,varid,ncfile,domname,domsize,domll)
           case default
             Write(6,*) 'ERROR: Cannot find data ',trim(datatype)
             call finishbanner
@@ -503,6 +519,8 @@ select case(datatype)
     else
       close(10)
     end if
+  case('bath2')
+    ierr = nf90_close(ncid(0))  
   case('river')
     do idom = 1,7
       if ( ncfile(idom) ) then
@@ -578,6 +596,57 @@ End Do
 Return
 End
 
+Subroutine ocnread2(latlon,nscale,lldim,coverout,bathdatafile,ncid,varid,ncfile)
+
+use netcdf_m
+
+Implicit None
+
+Integer, intent(in) :: nscale
+Real, dimension(2), intent(in) :: latlon
+Integer, dimension(2), intent(in) :: lldim
+Real, dimension(lldim(1),lldim(2)), intent(out) :: coverout
+real rtmp
+real, dimension(86400,nscale) :: databuffer
+real, dimension(86400) :: datatemp
+Integer, dimension(2,2) :: jin,jout
+Integer ilat,ilon,jlat,recpos,i,j
+integer ierr
+integer, intent(in) :: ncid, varid
+Integer, dimension(2) :: llint
+logical, intent(in) :: ncfile
+character(len=*), intent(in) :: bathdatafile
+
+Call solvejshift(latlon(1),jin,jout,240)
+
+coverout=0.
+
+Do ilat=1,lldim(2)
+
+  if ((mod(ilat,10).eq.0).or.(ilat.eq.lldim(2))) then
+    Write(6,*) 'GEBCO - ',ilat,'/',lldim(2)
+  end if
+  
+  ! Read data
+  llint(2)=nint((90.-latlon(2))*240.)+(ilat-1)*nscale
+  Do jlat=1,nscale
+    recpos=43201 - (llint(2)+jlat)
+    ierr = nf90_get_var(ncid,varid,datatemp,start=(/1,recpos/),count=(/86400,1/))  
+    ! Shift lon to zero
+    databuffer(jin(1,1):jin(1,2),jlat)=datatemp(jout(1,1):jout(1,2))
+    databuffer(jin(2,1):jin(2,2),jlat)=datatemp(jout(2,1):jout(2,2))
+  End Do
+
+  Do ilon=1,lldim(1)
+    llint(1)=(ilon-1)*nscale
+    coverout(ilon,ilat)=sum(databuffer(llint(1)+1:llint(1)+nscale,1:nscale))/real(nscale*nscale)
+  End Do
+ 
+End Do
+
+Return
+End
+    
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! This subroutine reads river accumulation data down to nscale=1km resolution
 !
@@ -701,11 +770,11 @@ Do ilat=1,10800
   else    
     Read(10,REC=ilat) databuffer
   end if
-  aglat=callat(90.,ilat,2)
+  aglat=callat(90.,ilat,20)
     
   Do ilon=1,21600
     
-    aglon=callon(-180.,ilon,2)
+    aglon=callon(-180.,ilon,20)
     
     Call lltoijmod(aglon,aglat,alci,alcj,nface)
     lci = nint(alci)
@@ -721,6 +790,60 @@ End Do
 Return
 End
 
+Subroutine ocnstream2(sibdim,coverout,countn,bathdatafile,ncid,varid,ncfile)
+
+Use ccinterp
+use netcdf_m
+
+Implicit None
+
+Integer, dimension(2), intent(in) :: sibdim
+Real, dimension(sibdim(1),sibdim(2)), intent(out) :: coverout
+Real aglon,aglat,alci,alcj
+Real callon,callat
+Integer, dimension(sibdim(1),sibdim(2)), intent(out) :: countn
+Real, dimension(86400) :: databuffer
+Integer ilat,ilon,lci,lcj,nface
+integer ierr
+integer, intent(in) :: ncid, varid
+logical, intent(in) :: ncfile
+character(len=*), intent(in) :: bathdatafile
+
+coverout=0
+countn=0
+
+Write(6,*) "Read GEBCO data (stream)"
+
+
+Do ilat=1,43200
+
+  if (mod(ilat,10).eq.0) then
+    Write(6,*) 'GEBCO - ',ilat,'/ 43200'
+  end if
+  
+  ! Read data
+  ierr = nf90_get_var(ncid,varid,databuffer,start=(/1,ilat/),count=(/86400,1/))  
+  aglat=-callat(90.,ilat,5)
+    
+  Do ilon=1,86400
+    
+    aglon=callon(-180.,ilon,5)
+    
+    Call lltoijmod(aglon,aglat,alci,alcj,nface)
+    lci = nint(alci)
+    lcj = nint(alcj)
+    lcj = lcj+nface*sibdim(1)
+    
+    coverout(lci,lcj)=coverout(lci,lcj)+databuffer(ilon)
+    countn(lci,lcj)=countn(lci,lcj)+1
+    
+  End Do
+End Do
+
+Return
+End
+    
+    
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! This subroutine reads Hydrosheds data at nscale=1km resolution
 ! (i.e., no storage, simply read and bin)
@@ -783,11 +906,11 @@ Do ilat=1,21600
       databuffer(posx_beg:posx_end) = max( databuffer(posx_beg:posx_end), dataread(posx_beg:posx_end) )
     end if
   end do
-  aglat=callat(90.,ilat,1)
+  aglat=callat(90.,ilat,10)
     
   Do ilon=1,43200
     
-    aglon=callon(-180.,ilon,1)
+    aglon=callon(-180.,ilon,10)
     
     Call lltoijmod(aglon,aglat,alci,alcj,nface)
     lci = nint(alci)
@@ -851,7 +974,7 @@ Integer, dimension(1:2), intent(out) :: lldim_x
 Integer i
 
 nscale_x=Int(nscale/adj)
-If (nscale_x.LT.1) nscale_x=1
+nscale_x = max(nscale_x,1)
 
 Do i=1,2
   lldim_x(i)=Int(Real(lldim(i))*Real(nscale)/(Real(nscale_x)*real(adj)))
@@ -876,8 +999,8 @@ Integer, dimension(1:2), intent(out) :: lldim
 Real, dimension(1:2,1:2), intent(in) :: sll
 Integer i,j
 
-i=nint((sll(1,2)-sll(1,1))*120./Real(nscale))
-j=nint((sll(2,2)-sll(2,1))*120./Real(nscale))
+i=nint((sll(1,2)-sll(1,1))*1200./Real(nscale))
+j=nint((sll(2,2)-sll(2,1))*1200./Real(nscale))
 
 subsec=int(sqrt(real(i)*real(j)/(real(sibsize)**2)))+1
 If (subsec.LT.1) subsec=1
@@ -885,10 +1008,16 @@ If (subsec.LT.1) subsec=1
 lldim(1)=nint(real(i)/real(subsec))
 lldim(2)=nint(real(j)/real(subsec))
 
-If ((real(lldim(1)*nscale*subsec)).LT.((sll(1,2)-sll(1,1))*120.)) lldim(1)=lldim(1)+1
-If ((real(lldim(2)*nscale*subsec)).LT.((sll(2,2)-sll(2,1))*120.)) lldim(2)=lldim(2)+1
-If ((nint((90.-sll(2,2))*120.)+lldim(2)*nscale).GT.21600) lldim(2)=(21600-nint((90.-sll(2,2))*120.))/nscale
-If ((lldim(1)*nscale).GT.43200) lldim(1)=43200/nscale
+! Backwards compatibility?
+if ( mod(nscale,10)==0 ) then
+  If (real(lldim(1)*(nscale/10)*subsec).LT.(sll(1,2)-sll(1,1))*120.) lldim(1)=lldim(1)+1
+  If (real(lldim(2)*(nscale/10)*subsec).LT.(sll(2,2)-sll(2,1))*120.) lldim(2)=lldim(2)+1
+else    
+  If (real(lldim(1)*nscale*subsec).LT.(sll(1,2)-sll(1,1))*1200.) lldim(1)=lldim(1)+1
+  If (real(lldim(2)*nscale*subsec).LT.(sll(2,2)-sll(2,1))*1200.) lldim(2)=lldim(2)+1
+end if  
+If ((nint((90.-sll(2,2))*1200.)+lldim(2)*nscale).GT.216000) lldim(2)=(216000-nint((90.-sll(2,2))*1200.))/nscale
+If ((lldim(1)*nscale).GT.432000) lldim(1)=432000/nscale
 
 If ((lldim(1).LT.1).OR.(lldim(2).LT.1)) Then
   lldim=(/ 0, 0 /)
@@ -912,7 +1041,7 @@ Integer, dimension(1:2), intent(in) :: lldim
 Real, intent(in) :: slonn,slatx
 Integer, intent(in) :: nx,ny
 
-latlon=(/ slonn+Real((nx-1)*lldim(1)*nscale)/120., slatx-Real((ny-1)*lldim(2)*nscale)/120. /)
+latlon=(/ slonn+Real((nx-1)*lldim(1)*nscale)/1200., slatx-Real((ny-1)*lldim(2)*nscale)/1200. /)
 if (latlon(2).LT.-90.) latlon(2)=-90.
 
 Return
@@ -930,7 +1059,7 @@ Implicit None
 Real, intent(in) :: latlon
 Integer, intent(in) :: i,nscale
 
-callon=(Real(i-1)+0.5)*real(nscale)/120.+latlon
+callon=(Real(i-1)+0.5)*real(nscale)/1200.+latlon
 
 Return
 End
@@ -963,7 +1092,7 @@ Implicit None
 Real, intent(in) :: latlon
 Integer, intent(in) :: i,nscale
 
-callat=latlon-(Real(i-1)+0.5)*real(nscale)/120.
+callat=latlon-(Real(i-1)+0.5)*real(nscale)/1200.
 
 Return
 End
@@ -979,7 +1108,7 @@ Implicit None
 Real, intent(in) :: aglon,latlon
 Integer, intent(in) :: nscale
 
-indexlon=(aglon-latlon)*120./real(nscale)+0.5
+indexlon=(aglon-latlon)*1200./real(nscale)+0.5
 	    
 Return
 End	    
@@ -995,7 +1124,7 @@ Implicit None
 Real, intent(in) :: aglat,latlon
 Integer, intent(in) :: nscale
    
-indexlat=(-aglat+latlon)*120./real(nscale)+0.5
+indexlat=(-aglat+latlon)*1200./real(nscale)+0.5
 
 Return
 End
@@ -1027,9 +1156,9 @@ Logical, dimension(1:sibdim(1),1:sibdim(2)), intent(in) :: maskn
 tlld=rlld
 
 templl(1,1)=latlon(1)
-templl(1,2)=latlon(1)+real(lldim(1)*nscale)/120.
+templl(1,2)=latlon(1)+real(lldim(1)*nscale)/1200.
 templl(2,2)=latlon(2)
-templl(2,1)=latlon(2)-real(lldim(2)*nscale)/120.
+templl(2,1)=latlon(2)-real(lldim(2)*nscale)/1200.
 
 Do i=1,2
   If (templl(2,i).LT.-90.) templl(2,i)=-90.
@@ -1046,11 +1175,11 @@ Select Case(mode)
     sll=templl
     Return
   Case(1)
-    sermask=sermask.AND.(grid.LE.scalelimit)
+    sermask=sermask.AND.(grid*10..LE.scalelimit)
   Case(2)
-    sermask=sermask.AND.(grid.GE.scalelimit)
+    sermask=sermask.AND.(grid*10..GE.scalelimit)
   Case(3)
-    sermask=sermask.AND.(grid.EQ.scalelimit)
+    sermask=sermask.AND.(grid*10..EQ.scalelimit)
   Case(4)
     ! Do nothing
   Case Default
@@ -1081,10 +1210,10 @@ Do i=1,2
   End Do
 End Do
 
-sll(1,1)=real(int((sll(1,1)-latlon(1))*120./real(nscale)))*real(nscale)/120.+latlon(1)
-sll(1,2)=real(rndup((sll(1,2)-latlon(1))*120./real(nscale)))*real(nscale)/120.+latlon(1)
-sll(2,1)=-real(rndup((latlon(2)-sll(2,1))*120./real(nscale)))*real(nscale)/120.+latlon(2)
-sll(2,2)=-real(int((latlon(2)-sll(2,2))*120./real(nscale)))*real(nscale)/120.+latlon(2)
+sll(1,1)=real(int((sll(1,1)-latlon(1))*1200./real(nscale)))*real(nscale)/1200.+latlon(1)
+sll(1,2)=real(rndup((sll(1,2)-latlon(1))*1200./real(nscale)))*real(nscale)/1200.+latlon(1)
+sll(2,1)=-real(rndup((latlon(2)-sll(2,1))*1200./real(nscale)))*real(nscale)/1200.+latlon(2)
+sll(2,2)=-real(int((latlon(2)-sll(2,2))*1200./real(nscale)))*real(nscale)/1200.+latlon(2)
 
 ! Check bounds
 Do i=1,2
@@ -1124,16 +1253,16 @@ Integer mode,maxscale,subsecmax
 Integer findfact
 Logical, dimension(1:sibdim(1),1:sibdim(2)), intent(in) :: maskn
 
-tscale=Maxval(grid,maskn)
+tscale=Maxval(grid,maskn)*10.
 
 mode=1
-If (nscale.EQ.999) mode=0
+If (nscale.EQ.9999) mode=0
 
 maxscale=Int(0.5*real(nscale)/Real(scalelimit))*scalelimit
-maxscale=findfact(21600,maxscale,-scalelimit)
+maxscale=findfact(216000,maxscale,-scalelimit)
 If (maxscale.LT.scalelimit) maxscale=scalelimit
 
-llstore=(/ 43200/maxscale , 21600/maxscale /)
+llstore=(/ 432000/maxscale , 216000/maxscale /)
 Call searchdim(mode,sll,maxscale,tscale,latlon,llstore,grid,maskn,rlld,sibdim)
 Call scaleconvert(maxscale,subsecmax,llstore,sll,sibsize)
 
@@ -1142,20 +1271,20 @@ If (subsecmax.LT.1) Then
   mode=0
   nscale=maxscale
 Else
-  nscale=Int(Minval(grid,maskn)/Real(scalelimit))*scalelimit
-  nscale=findfact(21600,nscale,-scalelimit)
+  nscale=Int(Minval(grid,maskn)*10./Real(scalelimit))*scalelimit
+  nscale=findfact(216000,nscale,-scalelimit)
   If (nscale.LT.scalelimit) nscale=scalelimit
   subsec=subsecmax+1
   Do While (subsec.GT.subsecmax)
     ! Get estimate of array size
-    llstore=(/ 43200/nscale , 21600/nscale /)
+    llstore=(/ 432000/nscale , 216000/nscale /)
     ! Calculate domain for search
     Call searchdim(mode,sll,nscale,tscale,latlon,llstore,grid,maskn,rlld,sibdim)
     ! Define number of points in domain and subdivide into tiles if array is too big
     Call scaleconvert(nscale,subsec,llstore,sll,sibsize)
     If (subsec.GT.subsecmax) Then
       nscale=nscale+scalelimit
-      nscale=findfact(21600,nscale,scalelimit)
+      nscale=findfact(216000,nscale,scalelimit)
     End If
   End Do
 End If
@@ -1164,7 +1293,7 @@ If (nscale.GT.maxscale) nscale=maxscale
 If (nscale.LT.scalelimit) nscale=scalelimit
 
 
-llstore=(/ 43200/nscale , 21600/nscale /)
+llstore=(/ 432000/nscale , 216000/nscale /)
 ! Calculate domain for search
 Call searchdim(mode,sll,nscale,tscale,latlon,llstore,grid,maskn,rlld,sibdim)
 ! Define number of points in domain and subdivide into tiles if array is too big
