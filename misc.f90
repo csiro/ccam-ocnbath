@@ -1,6 +1,6 @@
 ! Conformal Cubic Atmospheric Model
     
-! Copyright 2015 Commonwealth Scientific Industrial Research Organisation (CSIRO)
+! Copyright 2015-2023 Commonwealth Scientific Industrial Research Organisation (CSIRO)
     
 ! This file is part of the Conformal Cubic Atmospheric Model (CCAM)
 !
@@ -397,16 +397,19 @@ Integer, dimension(3), intent(in) :: arrsize
 Real, dimension(arrsize(1),arrsize(2),arrsize(3)), intent(in) :: inlvl
 Real, dimension(arrsize(3)), intent(in) :: outlvl
 Real, dimension(arrsize(1),arrsize(2),arrsize(3)), intent(inout) :: arrdata
+Real, dimension(arrsize(3)) :: rtmp1, rtmp2
 Real, dimension(arrsize(3)) :: tempdata
 Integer i,j,k
 
-Do j=1,arrsize(2)
-  Do i=1,arrsize(1)
+Do j = 1,arrsize(2)
+  Do i = 1,arrsize(1)
     ! Interpolate between levels
-    Do k=1,arrsize(3)
-      Call lineintp(arrdata(i,j,:),inlvl(i,j,:),outlvl(k),tempdata(k),arrsize(3))
+    rtmp1(:) = arrdata(i,j,:)
+    rtmp2(:) = inlvl(i,j,:)
+    Do k = 1,arrsize(3)
+      Call lineintp(rtmp1,rtmp2,outlvl(k),tempdata(k),arrsize(3))
     End Do
-    arrdata(i,j,:)=tempdata
+    arrdata(i,j,:) = tempdata
   End Do
 End Do
 
@@ -455,24 +458,26 @@ Integer apos(1),bpos(1)
 Real m
 
 If (posout<Minval(posin)) Then
-  Write(6,*) "ERROR: Must extrapolate below lowest value"
-  call finishbanner
-  Stop -1
-Else If (posout>Maxval(posin)) Then
-  Write(6,*) "ERROR: Must extrapolate above highest value"
-  call finishbanner
-  Stop -1
-end if
+  bpos = minloc( posin )
+  oval = dataval( bpos(1) )
 
-! interpolate
-bpos=Minloc(posin,posin>=posout)
-apos=Maxloc(posin,posin<=posout)
-If (apos(1)==bpos(1)) Then
-  oval=dataval(apos(1))
-Else 
-  m=(dataval(bpos(1))-dataval(apos(1)))/(posin(bpos(1))-posin(apos(1)))
-  oval=m*(posout-posin(apos(1)))+dataval(apos(1))
-End If
+Else If (posout>Maxval(posin)) Then
+  apos = maxloc( posin )
+  oval = dataval( apos(1) )
+
+Else
+  
+  ! interpolate
+  bpos=Minloc(posin,posin>=posout)
+  apos=Maxloc(posin,posin<=posout)
+  If (apos(1)==bpos(1)) Then
+    oval=dataval(apos(1))
+  Else 
+    m=(dataval(bpos(1))-dataval(apos(1)))/(posin(bpos(1))-posin(apos(1)))
+    oval=m*(posout-posin(apos(1)))+dataval(apos(1))
+  End If
+  
+End if
 
 Return
 End

@@ -1,6 +1,6 @@
 ! Conformal Cubic Atmospheric Model
     
-! Copyright 2015 Commonwealth Scientific Industrial Research Organisation (CSIRO)
+! Copyright 2015-2025 Commonwealth Scientific Industrial Research Organisation (CSIRO)
     
 ! This file is part of the Conformal Cubic Atmospheric Model (CCAM)
 !
@@ -747,17 +747,19 @@ End
 ! the terrain height
 !
 
-Subroutine nccallvlheight(ncid,outlvl,lvlnum,otype)
+Subroutine nccallvlheight(ncid,outlvl,lvlnum,otype,it_start)
 
 Implicit None
 
 Integer, intent(in) :: ncid,lvlnum
+integer, intent(in) :: it_start
 Real, dimension(1:lvlnum), intent(out) :: outlvl
 Character(len=*), intent(in) :: otype
 Real, dimension(:,:,:), allocatable :: arrdata
 Real, dimension(1:lvlnum) :: tlvl
 Integer, dimension(1:4) :: ncdim
 Integer it,i,j,itop(1),ibot(1)
+integer ita
 Real x,holdlvl
 
 Call getncdims(ncid,ncdim)
@@ -770,11 +772,14 @@ End If
 ! Define height array
 Allocate(arrdata(1:ncdim(1),1:ncdim(2),1:ncdim(3)))
 
+ita = it_start
+
 ! Step through all time steps (skip first time step)
-outlvl=0.
-Do it=2,ncdim(4)
+outlvl(:)=0.
+Do it=ita,ncdim(4)
   Call ncgetlvlheight(ncid,it,arrdata,ncdim,otype)
-  If (it.EQ.2) Then
+  
+  If (it.EQ.ita) Then
     itop=Maxloc(arrdata(1,1,:))
     ibot=Minloc(arrdata(1,1,:))
     outlvl(ibot)=0.
@@ -782,12 +787,12 @@ Do it=2,ncdim(4)
   End If
    
   ! Calculate average levels
-  Do i=1,ncdim(1)
-    Do j=1,ncdim(2)
-      tlvl=outlvl+arrdata(i,j,:)/Real(ncdim(1)*ncdim(2)*(ncdim(4)-1))
+  Do j=1,ncdim(2)
+    Do i=1,ncdim(1)
+      tlvl(:)=outlvl(:)+arrdata(i,j,:)/Real(ncdim(1)*ncdim(2)*(ncdim(4)-ita+1))
       tlvl(ibot(1))=Max(outlvl(ibot(1)),arrdata(i,j,ibot(1)))
       tlvl(itop(1))=Min(outlvl(itop(1)),arrdata(i,j,itop(1)))
-      outlvl=tlvl
+      outlvl(:)=tlvl(:)
     End Do
   End Do
         
@@ -795,9 +800,9 @@ End Do
 Deallocate(arrdata)
 
 ! Round levels
-Do i=1,ncdim(3)
+Do i=1,ncdim(3) !=lvlnum
   holdlvl=outlvl(i)
-  x=Int(Log10(outlvl(i))-2.)
+  x=real(Int(Log10(outlvl(i))-2.))
   If (x.LT.0.) x=0.
   x=10**x
   outlvl(i)=Nint(outlvl(i)/x)*x
@@ -822,9 +827,11 @@ Integer, dimension(1:3), intent(in) :: arrsize
 Real, dimension(1:arrsize(3)), intent(in) :: nclvl
 Real, dimension(1:arrsize(1),1:arrsize(2),1:arrsize(3)), intent(out) :: outdata
 Integer, dimension(1:4,1:2) :: tempsize
-Real, dimension(1:arrsize(1),1:arrsize(2),0:arrsize(3),1) :: tempdata
-Real, dimension(1:arrsize(1),1:arrsize(2),0:arrsize(3),1) :: mixrdata
-Real, dimension(1:arrsize(1),1:arrsize(2),0:arrsize(3)) :: tempout
+Real, dimension(:,:,:,:), allocatable :: tempdata
+Real, dimension(:,:,:), allocatable :: rdata3
+Real, dimension(:,:), allocatable :: rdata2
+Real, dimension(:,:,:,:), allocatable :: mixrdata
+Real, dimension(:,:,:), allocatable :: tempout
 Real, dimension(0:arrsize(3)) :: lvldata
 Character*80 outname,inunit
 Integer valid,ncstatus
@@ -832,28 +839,37 @@ Real offset
 
 ! Define hyperslab
 tempsize=1.
-tempsize(1:3,2)=arrsize
+tempsize(1:3,2)=arrsize(1:3)
 tempsize(4,1)=it
+
+Allocate( tempdata(1:arrsize(1),1:arrsize(2),0:arrsize(3),1) )
+Allocate( rdata3(1:arrsize(1),1:arrsize(2),1:arrsize(3)) )
+Allocate( rdata2(1:arrsize(1),1:arrsize(2)) )
+Allocate( mixrdata(1:arrsize(1),1:arrsize(2),0:arrsize(3),1) )
+Allocate( tempout(1:arrsize(1),1:arrsize(2),0:arrsize(3)) )
 
 tempdata = 0. ! for Cray compiler
 mixrdata = 0. ! for Cray compiler
 
 ! get temp data
-Call getncarray(ncid,'temp',tempsize,tempdata(:,:,1:tempsize(3,2),:))
+Call getncarray(ncid,'temp',tempsize,rdata3(:,:,:))
 Call getncdata(ncid,'temp','units',inunit)
-Call arrfieldrescale(inunit,'K',tempdata(:,:,1:tempsize(3,2),:),tempsize(:,2))
+Call arrfieldrescale(inunit,'K',rdata3(:,:,:),tempsize(:,2))
+tempdata(:,:,1:tempsize(3,2),1) = rdata3(:,:,:)
 
 ! Get mixr data
-Call getncarray(ncid,'mixr',tempsize,mixrdata(:,:,1:tempsize(3,2),:))
+Call getncarray(ncid,'mixr',tempsize,rdata3(:,:,:))
 Call getncdata(ncid,'mixr','units',inunit)
-Call arrfieldrescale(inunit,'kg/kg',mixrdata(:,:,1:tempsize(3,2),:),tempsize(:,2))
+Call arrfieldrescale(inunit,'kg/kg',rdata3(:,:,:),tempsize(:,2))
+mixrdata(:,:,1:tempsize(3,2),1) = rdata3(:,:,:)
 
 Call ncfindvarid(ncid,'tscrn',outname,valid)
 If (valid.NE.-1) Then
   tempsize(3,2)=1
-  Call getncarray(ncid,'tscrn',tempsize,tempdata(:,:,0,:))
+  Call getncarray(ncid,'tscrn',tempsize,rdata2(:,:))
   Call getncdata(ncid,'tscrn','units',inunit)
-  Call arrfieldrescale(inunit,'K',tempdata(:,:,0,:),tempsize(:,2))
+  Call arrfieldrescale(inunit,'K',rdata2(:,:),tempsize(:,2))
+  tempdata(:,:,0,1) = rdata2(:,:)
   
   Call ncgetnumval(ncid,'tscrn','add_offset',offset,ncstatus)
   If (tempdata(1,1,0,1).EQ.offset) Then
@@ -868,12 +884,13 @@ End If
 Call ncfindvarid(ncid,'qgscrn',outname,valid)
 If (valid.NE.-1) Then
   tempsize(3,2)=1
-  Call getncarray(ncid,'qgscrn',tempsize,mixrdata(:,:,0,:))
+  Call getncarray(ncid,'qgscrn',tempsize,rdata2(:,:))
   Call getncdata(ncid,'qgscrn','units',inunit)
-  Call arrfieldrescale(inunit,'kg/kg',mixrdata(:,:,0,:),tempsize(:,2))
+  Call arrfieldrescale(inunit,'kg/kg',rdata2(:,:),tempsize(:,2))
+  mixrdata(:,:,0,1) = rdata2(:,:)
   
   Call ncgetnumval(ncid,'qgscrn','add_offset',offset,ncstatus)
-  If (tempdata(1,1,0,1).EQ.offset) Then
+  If (mixrdata(1,1,0,1).EQ.offset) Then
     Write(6,*) "qgscrn is not defined at time step ",it   
     mixrdata(:,:,0,:)=mixrdata(:,:,1,:)
   End If
@@ -892,6 +909,12 @@ lvldata(1:arrsize(3))=nclvl
 lvldata(0)=1.
 Call calsigmalevel(lvldata,tempout,tempsize(1:3,2),tempdata(:,:,:,1))
 outdata=tempout(:,:,1:arrsize(3))
+
+Deallocate( tempdata ) 
+Deallocate( rdata3 )
+Deallocate( rdata2 )
+Deallocate( mixrdata )
+Deallocate( tempout )
 
 Return
 End
